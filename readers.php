@@ -1,9 +1,15 @@
 <?php
+session_start();
 require_once 'config/config.php';
 
 // 检查是否已登录
 $user = null;
-if (isset($_SESSION['user_id'])) {
+$isAdmin = false;
+
+// 检查管理员登录状态
+if (isset($_SESSION['admin_id'])) {
+    $isAdmin = true;
+} elseif (isset($_SESSION['user_id'])) {
     $user = getUserById($_SESSION['user_id']);
 }
 
@@ -234,21 +240,103 @@ $totalPages = ceil($total / READERS_PER_PAGE);
         .specialty-tag {
             display: inline-block !important;
             padding: 4px 10px !important;
-            background: linear-gradient(135deg, #d4af37, #ffd700) !important;
-            color: #000 !important;
             text-decoration: none !important;
             border-radius: 12px !important;
             font-size: 12px !important;
             font-weight: 500 !important;
             transition: all 0.3s ease !important;
-            border: 1px solid #d4af37 !important;
+            border: 1px solid transparent !important;
         }
 
-        .specialty-tag:hover {
+        /* 感情标签 - 红色 */
+        .specialty-感情 {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e) !important;
+            color: white !important;
+            border-color: #ff6b6b !important;
+        }
+
+        .specialty-感情:hover {
+            background: linear-gradient(135deg, #ff5252, #ff6b6b) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4) !important;
+        }
+
+        /* 桃花标签 - 粉红色 */
+        .specialty-桃花 {
+            background: linear-gradient(135deg, #ff69b4, #ff91d4) !important;
+            color: white !important;
+            border-color: #ff69b4 !important;
+        }
+
+        .specialty-桃花:hover {
+            background: linear-gradient(135deg, #ff1493, #ff69b4) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(255, 105, 180, 0.4) !important;
+        }
+
+        /* 财运标签 - 金色 */
+        .specialty-财运 {
+            background: linear-gradient(135deg, #d4af37, #ffd700) !important;
+            color: #000 !important;
+            border-color: #d4af37 !important;
+        }
+
+        .specialty-财运:hover {
             background: linear-gradient(135deg, #b8860b, #d4af37) !important;
             transform: translateY(-1px) !important;
-            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3) !important;
-            color: #000 !important;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.4) !important;
+        }
+
+        /* 事业标签 - 绿色 */
+        .specialty-事业 {
+            background: linear-gradient(135deg, #28a745, #5cb85c) !important;
+            color: white !important;
+            border-color: #28a745 !important;
+        }
+
+        .specialty-事业:hover {
+            background: linear-gradient(135deg, #218838, #28a745) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4) !important;
+        }
+
+        /* 运势标签 - 橘色 */
+        .specialty-运势 {
+            background: linear-gradient(135deg, #ff8c00, #ffa500) !important;
+            color: white !important;
+            border-color: #ff8c00 !important;
+        }
+
+        .specialty-运势:hover {
+            background: linear-gradient(135deg, #e67e00, #ff8c00) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(255, 140, 0, 0.4) !important;
+        }
+
+        /* 学业标签 - 蓝色 */
+        .specialty-学业 {
+            background: linear-gradient(135deg, #007bff, #4dabf7) !important;
+            color: white !important;
+            border-color: #007bff !important;
+        }
+
+        .specialty-学业:hover {
+            background: linear-gradient(135deg, #0056b3, #007bff) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4) !important;
+        }
+
+        /* 寻物标签 - 紫色 */
+        .specialty-寻物 {
+            background: linear-gradient(135deg, #6f42c1, #8e44ad) !important;
+            color: white !important;
+            border-color: #6f42c1 !important;
+        }
+
+        .specialty-寻物:hover {
+            background: linear-gradient(135deg, #5a2d91, #6f42c1) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(111, 66, 193, 0.4) !important;
         }
 
         .specialty-tag:active {
@@ -301,9 +389,15 @@ $totalPages = ceil($total / READERS_PER_PAGE);
 
             /* 移动端擅长标签优化 */
             .specialties {
-                flex-direction: column !important;
-                align-items: flex-start !important;
+                flex-direction: row !important;
+                align-items: center !important;
                 gap: 6px !important;
+                flex-wrap: wrap !important;
+            }
+
+            .specialties strong {
+                margin-bottom: 0 !important;
+                flex-shrink: 0 !important;
             }
 
             .specialty-tag {
@@ -350,9 +444,14 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             }
 
             /* 小屏幕擅长标签优化 */
+            .specialties {
+                gap: 4px !important;
+            }
+
             .specialty-tag {
                 font-size: 9px !important;
                 padding: 2px 5px !important;
+                border-radius: 8px !important;
             }
         }
     </style>
@@ -444,7 +543,7 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                                             if (!empty($specialtyItem) && in_array($specialtyItem, $systemSpecialties)):
                                         ?>
                                             <a href="readers.php?specialty=<?php echo urlencode($specialtyItem); ?>"
-                                               class="specialty-tag"><?php echo h($specialtyItem); ?></a>
+                                               class="specialty-tag specialty-<?php echo h($specialtyItem); ?>"><?php echo h($specialtyItem); ?></a>
                                         <?php
                                             endif;
                                         endforeach;

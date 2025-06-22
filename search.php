@@ -123,7 +123,7 @@ if (!empty($query)) {
                                                     if (!empty($specialty)):
                                                 ?>
                                                     <a href="readers.php?specialty=<?php echo urlencode($specialty); ?>"
-                                                       class="specialty-tag"><?php echo h($specialty); ?></a>
+                                                       class="specialty-tag specialty-<?php echo h($specialty); ?>"><?php echo h($specialty); ?></a>
                                                 <?php
                                                     endif;
                                                 endforeach;
@@ -205,6 +205,54 @@ if (!empty($query)) {
         
         .clear-search:hover {
             text-decoration: underline;
+        }
+
+        /* 专长标签颜色样式 */
+        .specialty-感情 {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e) !important;
+            color: white !important;
+            border-color: #ff6b6b !important;
+        }
+
+        .specialty-桃花 {
+            background: linear-gradient(135deg, #ff69b4, #ff91d4) !important;
+            color: white !important;
+            border-color: #ff69b4 !important;
+        }
+
+        .specialty-财运 {
+            background: linear-gradient(135deg, #d4af37, #ffd700) !important;
+            color: #000 !important;
+            border-color: #d4af37 !important;
+        }
+
+        .specialty-事业 {
+            background: linear-gradient(135deg, #28a745, #5cb85c) !important;
+            color: white !important;
+            border-color: #28a745 !important;
+        }
+
+        .specialty-运势 {
+            background: linear-gradient(135deg, #ff8c00, #ffa500) !important;
+            color: white !important;
+            border-color: #ff8c00 !important;
+        }
+
+        .specialty-学业 {
+            background: linear-gradient(135deg, #007bff, #4dabf7) !important;
+            color: white !important;
+            border-color: #007bff !important;
+        }
+
+        .specialty-寻物 {
+            background: linear-gradient(135deg, #6f42c1, #8e44ad) !important;
+            color: white !important;
+            border-color: #6f42c1 !important;
+        }
+
+        .specialty-tag:hover {
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
         }
     </style>
 </body>

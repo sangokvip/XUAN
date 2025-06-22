@@ -48,13 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $c
     }
 }
 
-// 获取查看统计
+// 更新页面查看次数（每次访问都增加）
 $db = Database::getInstance();
-$viewStats = $db->fetchOne(
-    "SELECT COUNT(*) as total_views FROM contact_views WHERE reader_id = ?",
-    [$readerId]
-);
-$totalViews = $viewStats['total_views'] ?? 0;
+
+// 更新readers表中的view_count字段
+$db->query("UPDATE readers SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", [$readerId]);
+
+// 获取更新后的查看次数
+$readerData = $db->fetchOne("SELECT view_count FROM readers WHERE id = ?", [$readerId]);
+$totalViews = $readerData['view_count'] ?? 0;
 ?>
 
 <!DOCTYPE html>
@@ -297,9 +299,50 @@ $totalViews = $viewStats['total_views'] ?? 0;
         }
 
         .specialty-tag-detail.system-tag {
+            border: 1px solid transparent;
+        }
+
+        /* 系统标签的特定颜色 */
+        .specialty-tag-detail.system-tag[data-specialty="感情"] {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border-color: #ff6b6b;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="桃花"] {
+            background: linear-gradient(135deg, #ff69b4, #ff91d4);
+            color: white;
+            border-color: #ff69b4;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="财运"] {
             background: linear-gradient(135deg, #d4af37, #ffd700);
             color: #000;
-            border: 1px solid #d4af37;
+            border-color: #d4af37;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="事业"] {
+            background: linear-gradient(135deg, #28a745, #5cb85c);
+            color: white;
+            border-color: #28a745;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="运势"] {
+            background: linear-gradient(135deg, #ff8c00, #ffa500);
+            color: white;
+            border-color: #ff8c00;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="学业"] {
+            background: linear-gradient(135deg, #007bff, #4dabf7);
+            color: white;
+            border-color: #007bff;
+        }
+
+        .specialty-tag-detail.system-tag[data-specialty="寻物"] {
+            background: linear-gradient(135deg, #6f42c1, #8e44ad);
+            color: white;
+            border-color: #6f42c1;
         }
 
         .specialty-tag-detail.custom-tag {
@@ -389,7 +432,8 @@ $totalViews = $viewStats['total_views'] ?? 0;
                                         if (!empty($specialtyItem)):
                                             $isSystemTag = in_array($specialtyItem, $systemSpecialties);
                                     ?>
-                                        <span class="specialty-tag-detail <?php echo $isSystemTag ? 'system-tag' : 'custom-tag'; ?>">
+                                        <span class="specialty-tag-detail <?php echo $isSystemTag ? 'system-tag' : 'custom-tag'; ?>"
+                                              <?php if ($isSystemTag): ?>data-specialty="<?php echo h($specialtyItem); ?>"<?php endif; ?>>
                                             <?php echo h($specialtyItem); ?>
                                         </span>
                                     <?php
