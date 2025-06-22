@@ -70,6 +70,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $success = '塔罗师已删除';
         }
     }
+
+    elseif ($action === 'batch_delete') {
+        $readerIds = $_POST['reader_ids'] ?? [];
+        if (!empty($readerIds)) {
+            $deletedCount = 0;
+
+            foreach ($readerIds as $id) {
+                $id = (int)$id;
+                // 获取塔罗师信息
+                $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$id]);
+                if ($reader) {
+                    // 删除相关文件
+                    $filesToDelete = [];
+                    if (!empty($reader['photo']) && file_exists('../' . $reader['photo'])) {
+                        $filesToDelete[] = '../' . $reader['photo'];
+                    }
+                    if (!empty($reader['price_list_image']) && file_exists('../' . $reader['price_list_image'])) {
+                        $filesToDelete[] = '../' . $reader['price_list_image'];
+                    }
+
+                    // 删除证书文件
+                    if (!empty($reader['certificates'])) {
+                        $certificates = json_decode($reader['certificates'], true);
+                        if (is_array($certificates)) {
+                            foreach ($certificates as $cert) {
+                                if (file_exists('../' . $cert)) {
+                                    $filesToDelete[] = '../' . $cert;
+                                }
+                            }
+                        }
+                    }
+
+                    // 删除数据库记录
+                    $db->delete('readers', 'id = ?', [$id]);
+
+                    // 删除文件
+                    foreach ($filesToDelete as $file) {
+                        if (file_exists($file)) {
+                            unlink($file);
+                        }
+                    }
+
+                    $deletedCount++;
+                }
+            }
+
+            $success = "已删除 {$deletedCount} 个塔罗师";
+        }
+    }
+
+    elseif ($action === 'auto_register') {
+        $count = (int)($_POST['register_count'] ?? 5);
+        $count = max(1, min(50, $count)); // 限制在1-50之间
+
+        $genders = ['male', 'female'];
+        $maleNames = ['张大师', '王老师', '李先生', '刘导师', '陈大师', '杨老师', '赵先生', '孙大师', '周老师', '吴先生', '郑大师', '王导师', '李大师', '张老师', '刘先生'];
+        $femaleNames = ['王老师', '李大师', '张女士', '刘老师', '陈大师', '杨女士', '赵老师', '孙大师', '周女士', '吴老师', '郑大师', '王女士', '李老师', '张大师', '刘女士'];
+        $specialties = ['感情', '学业', '桃花', '财运', '事业', '运势', '寻物'];
+        $descriptions = [
+            '拥有多年塔罗占卜经验，擅长解读人生迷茫，为您指引方向。',
+            '专业塔罗师，精通各种牌阵，为您提供准确的人生指导。',
+            '资深塔罗占卜师，善于洞察内心，帮助您找到人生答案。',
+            '经验丰富的塔罗导师，用心为每一位求问者答疑解惑。',
+            '专注塔罗占卜多年，以诚待人，为您解读命运密码。',
+            '塔罗占卜专家，擅长情感咨询，助您走出人生困境。',
+            '资深塔罗师，精通心理分析，为您提供专业的人生建议。'
+        ];
+        $createdCount = 0;
+
+        for ($i = 1; $i <= $count; $i++) {
+            $gender = $genders[array_rand($genders)];
+            $avatar = $gender === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+            $names = $gender === 'male' ? $maleNames : $femaleNames;
+            $fullName = $names[array_rand($names)];
+            $selectedSpecialties = array_rand(array_flip($specialties), rand(2, 5));
+            if (!is_array($selectedSpecialties)) {
+                $selectedSpecialties = [$selectedSpecialties];
+            }
+            $description = $descriptions[array_rand($descriptions)];
+
+            $readerData = [
+                'username' => 'reader' . time() . rand(100, 999),
+                'email' => 'reader' . time() . rand(100, 999) . '@example.com',
+                'password_hash' => password_hash('787878', PASSWORD_DEFAULT),
+                'full_name' => $fullName,
+                'phone' => '1' . rand(30, 89) . rand(10000000, 99999999),
+                'gender' => $gender,
+                'experience_years' => rand(1, 20),
+                'specialties' => implode('、', $selectedSpecialties),
+                'description' => $description,
+                'photo' => $avatar,
+                'is_active' => 1,
+                'is_featured' => rand(0, 3) === 0 ? 1 : 0, // 25%概率成为推荐塔罗师
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            if ($db->insert('readers', $readerData)) {
+                $createdCount++;
+            }
+
+            // 避免时间戳重复
+            usleep(1000);
+        }
+
+        $success = "成功创建 {$createdCount} 个测试塔罗师（密码：787878）";
+    }
 }
 
 // 获取筛选参数
@@ -104,11 +210,11 @@ if ($featured === 'yes') {
 $offset = ($page - 1) * ADMIN_ITEMS_PER_PAGE;
 
 $readers = $db->fetchAll(
-    "SELECT r.*, 
-            (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
-     FROM readers r 
-     {$whereClause} 
-     ORDER BY r.created_at DESC 
+    "SELECT r.*,
+            COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count
+     FROM readers r
+     {$whereClause}
+     ORDER BY r.created_at DESC
      LIMIT ? OFFSET ?",
     array_merge($params, [ADMIN_ITEMS_PER_PAGE, $offset])
 );
@@ -192,6 +298,39 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                 </form>
             </div>
             
+            <!-- 批量操作和一键注册 -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3>批量操作</h3>
+                </div>
+                <div class="card-body">
+                    <div style="display: flex; gap: 20px; align-items: end;">
+                        <!-- 一键注册 -->
+                        <form method="POST" style="display: inline-block;">
+                            <input type="hidden" name="action" value="auto_register">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label for="register_count">创建测试塔罗师数量：</label>
+                                <input type="number" id="register_count" name="register_count"
+                                       value="5" min="1" max="50" style="width: 80px;">
+                            </div>
+                            <button type="submit" class="btn btn-primary"
+                                    onclick="return confirm('确定要创建测试塔罗师吗？')">
+                                一键注册塔罗师
+                            </button>
+                        </form>
+
+                        <!-- 批量删除 -->
+                        <form method="POST" id="batchDeleteForm" style="display: inline-block;">
+                            <input type="hidden" name="action" value="batch_delete">
+                            <button type="submit" class="btn btn-danger"
+                                    onclick="return confirmBatchDelete()">
+                                批量删除选中塔罗师
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <!-- 塔罗师列表 -->
             <div class="card">
                 <div class="card-header">
@@ -205,7 +344,9 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                                         <th>姓名</th>
+                                        <th>性别</th>
                                         <th>邮箱</th>
                                         <th>从业年数</th>
                                         <th>查看次数</th>
@@ -218,7 +359,25 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                 <tbody>
                                     <?php foreach ($readers as $reader): ?>
                                         <tr>
-                                            <td><?php echo h($reader['full_name']); ?></td>
+                                            <td>
+                                                <input type="checkbox" name="reader_ids[]" value="<?php echo $reader['id']; ?>" class="reader-checkbox">
+                                            </td>
+                                            <td>
+                                                <a href="../reader.php?id=<?php echo $reader['id']; ?>" target="_blank"
+                                                   style="color: #d4af37; text-decoration: none; font-weight: 500;"
+                                                   title="查看前端详情页">
+                                                    <?php echo h($reader['full_name']); ?>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <?php if (isset($reader['gender'])): ?>
+                                                    <span class="gender-badge gender-<?php echo $reader['gender']; ?>">
+                                                        <?php echo $reader['gender'] === 'male' ? '男' : '女'; ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span style="color: #999;">未设置</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo h($reader['email']); ?></td>
                                             <td><?php echo h($reader['experience_years']); ?>年</td>
                                             <td><?php echo h($reader['view_count']); ?></td>
@@ -303,5 +462,69 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
             </div>
         </div>
     </div>
+
+    <style>
+        .gender-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-align: center;
+            min-width: 30px;
+        }
+
+        .gender-male {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+
+        .gender-female {
+            background-color: #fce4ec;
+            color: #c2185b;
+            border: 1px solid #f8bbd9;
+        }
+    </style>
+
+    <script>
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.reader-checkbox');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+            });
+        }
+
+        function confirmBatchDelete() {
+            const checkedBoxes = document.querySelectorAll('.reader-checkbox:checked');
+
+            if (checkedBoxes.length === 0) {
+                alert('请选择要删除的塔罗师');
+                return false;
+            }
+
+            return confirm(`确定要删除选中的 ${checkedBoxes.length} 个塔罗师吗？此操作不可恢复！`);
+        }
+
+        // 将选中的复选框添加到批量删除表单中
+        document.getElementById('batchDeleteForm').addEventListener('submit', function(e) {
+            const checkedBoxes = document.querySelectorAll('.reader-checkbox:checked');
+
+            // 清除之前的隐藏字段
+            const existingInputs = this.querySelectorAll('input[name="reader_ids[]"]');
+            existingInputs.forEach(input => input.remove());
+
+            // 添加选中的塔罗师ID
+            checkedBoxes.forEach(checkbox => {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'reader_ids[]';
+                hiddenInput.value = checkbox.value;
+                this.appendChild(hiddenInput);
+            });
+        });
+    </script>
 </body>
 </html>

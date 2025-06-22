@@ -1,5 +1,4 @@
 <?php
-session_start();
 require_once 'config/config.php';
 
 // 检查是否已登录
@@ -12,6 +11,16 @@ if (isset($_SESSION['user_id'])) {
 $page = max(1, (int)($_GET['page'] ?? 1));
 $search = trim($_GET['search'] ?? '');
 $specialty = trim($_GET['specialty'] ?? '');
+
+// 调试信息（开发时使用，生产环境请删除）
+if (isset($_GET['debug'])) {
+    echo "<pre>";
+    echo "GET参数: " . print_r($_GET, true);
+    echo "页码: $page\n";
+    echo "搜索: '$search'\n";
+    echo "专长: '$specialty'\n";
+    echo "</pre>";
+}
 
 // 构建查询条件
 $whereClause = "WHERE r.is_active = 1";
@@ -34,11 +43,11 @@ $db = Database::getInstance();
 $offset = ($page - 1) * READERS_PER_PAGE;
 
 $readers = $db->fetchAll(
-    "SELECT r.*, 
-            (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
-     FROM readers r 
-     {$whereClause} 
-     ORDER BY r.is_featured DESC, r.created_at DESC 
+    "SELECT r.*,
+            COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count
+     FROM readers r
+     {$whereClause}
+     ORDER BY r.is_featured DESC, view_count DESC, r.created_at DESC
      LIMIT ? OFFSET ?",
     array_merge($params, [READERS_PER_PAGE, $offset])
 );
@@ -57,8 +66,8 @@ $totalPages = ceil($total / READERS_PER_PAGE);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>塔罗师列表 - <?php echo SITE_NAME; ?></title>
-    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <title>塔罗师列表 - <?php echo getSiteName(); ?></title>
+    <link rel="stylesheet" href="assets/css/style.css">
     <style>
         /* 塔罗师照片竖向展示 - 适合竖图显示 */
         .reader-photo {
@@ -72,6 +81,29 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             border-radius: 15px 15px 0 0 !important;
         }
 
+        /* 查看次数图标 - 显示在头像右下角 */
+        .view-count-badge {
+            position: absolute !important;
+            bottom: 10px !important;
+            right: 10px !important;
+            background: rgba(0, 0, 0, 0.7) !important;
+            color: white !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            font-size: 12px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            backdrop-filter: blur(5px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .view-count-badge .eye-icon {
+            width: 14px !important;
+            height: 14px !important;
+            opacity: 0.9 !important;
+        }
+
         .reader-photo img {
             max-width: 100% !important;
             max-height: 100% !important;
@@ -81,8 +113,23 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             transition: transform 0.3s ease !important;
         }
 
+        .reader-photo-link {
+            display: block !important;
+            width: 100% !important;
+            height: 100% !important;
+            text-decoration: none !important;
+            color: inherit !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
         .reader-card:hover .reader-photo img {
             transform: scale(1.02) !important;
+        }
+
+        .reader-photo-link:hover {
+            opacity: 0.9 !important;
         }
 
         .default-photo {
@@ -125,6 +172,34 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             flex-direction: column !important;
         }
 
+        /* 塔罗师名字和从业年数布局 */
+        .reader-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 10px !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+
+        .reader-name {
+            font-size: 1.2rem !important;
+            font-weight: 600 !important;
+            color: #2c3e50 !important;
+            margin: 0 !important;
+        }
+
+        .reader-experience {
+            background: white !important;
+            color: #d4af37 !important;
+            padding: 4px 10px !important;
+            border-radius: 12px !important;
+            border: 2px solid #d4af37 !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+        }
+
         .reader-actions {
             margin-top: auto !important;
             text-align: center !important;
@@ -145,13 +220,15 @@ $totalPages = ceil($total / READERS_PER_PAGE);
         /* 占卜方向标签样式 */
         .specialties {
             margin-bottom: 15px !important;
-        }
-
-        .specialty-tags {
             display: flex !important;
             flex-wrap: wrap !important;
-            gap: 6px !important;
-            margin-top: 8px !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+
+        .specialties strong {
+            margin-right: 0 !important;
+            white-space: nowrap !important;
         }
 
         .specialty-tag {
@@ -192,6 +269,47 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             .default-photo {
                 font-size: 50px !important;
             }
+
+            /* 移动端查看次数徽章 */
+            .view-count-badge {
+                bottom: 8px !important;
+                right: 8px !important;
+                padding: 3px 6px !important;
+                font-size: 11px !important;
+            }
+
+            .view-count-badge .eye-icon {
+                width: 12px !important;
+                height: 12px !important;
+            }
+
+            /* 移动端名字和从业年数布局 */
+            .reader-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 6px !important;
+            }
+
+            .reader-name {
+                font-size: 1.1rem !important;
+            }
+
+            .reader-experience {
+                font-size: 10px !important;
+                padding: 3px 8px !important;
+            }
+
+            /* 移动端擅长标签优化 */
+            .specialties {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 6px !important;
+            }
+
+            .specialty-tag {
+                font-size: 10px !important;
+                padding: 3px 6px !important;
+            }
         }
 
         @media (max-width: 480px) {
@@ -206,6 +324,35 @@ $totalPages = ceil($total / READERS_PER_PAGE);
 
             .default-photo {
                 font-size: 40px !important;
+            }
+
+            /* 小屏幕查看次数徽章 */
+            .view-count-badge {
+                bottom: 6px !important;
+                right: 6px !important;
+                padding: 2px 5px !important;
+                font-size: 10px !important;
+            }
+
+            .view-count-badge .eye-icon {
+                width: 10px !important;
+                height: 10px !important;
+            }
+
+            /* 小屏幕名字和从业年数 */
+            .reader-name {
+                font-size: 1rem !important;
+            }
+
+            .reader-experience {
+                font-size: 9px !important;
+                padding: 2px 6px !important;
+            }
+
+            /* 小屏幕擅长标签优化 */
+            .specialty-tag {
+                font-size: 9px !important;
+                padding: 2px 5px !important;
             }
         }
     </style>
@@ -259,40 +406,49 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                             <?php endif; ?>
                             
                             <div class="reader-photo">
-                                <?php if (!empty($reader['photo'])): ?>
-                                    <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
-                                <?php else: ?>
-                                    <div class="default-photo">
-                                        <i class="icon-user"></i>
-                                    </div>
-                                <?php endif; ?>
+                                <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-photo-link">
+                                    <?php if (!empty($reader['photo'])): ?>
+                                        <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
+                                    <?php else: ?>
+                                        <div class="default-photo">
+                                            <i class="icon-user"></i>
+                                        </div>
+                                    <?php endif; ?>
+                                </a>
+                                <!-- 查看次数徽章 -->
+                                <div class="view-count-badge">
+                                    <svg class="eye-icon" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                    </svg>
+                                    <span><?php echo h($reader['view_count']); ?></span>
+                                </div>
                             </div>
                             
                             <div class="reader-info">
-                                <h3><?php echo h($reader['full_name']); ?></h3>
-                                
-                                <div class="reader-meta">
-                                    <span class="experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
-                                    <span class="views"><?php echo h($reader['view_count']); ?> 次查看</span>
+                                <!-- 塔罗师名字和从业年数 -->
+                                <div class="reader-header">
+                                    <h3 class="reader-name"><?php echo h($reader['full_name']); ?></h3>
+                                    <span class="reader-experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
                                 </div>
                                 
                                 <?php if (!empty($reader['specialties'])): ?>
                                     <div class="specialties">
                                         <strong>擅长：</strong>
-                                        <div class="specialty-tags">
-                                            <?php
-                                            $specialties = explode('、', $reader['specialties']);
-                                            foreach ($specialties as $specialty):
-                                                $specialty = trim($specialty);
-                                                if (!empty($specialty)):
-                                            ?>
-                                                <a href="readers.php?specialty=<?php echo urlencode($specialty); ?>"
-                                                   class="specialty-tag"><?php echo h($specialty); ?></a>
-                                            <?php
-                                                endif;
-                                            endforeach;
-                                            ?>
-                                        </div>
+                                        <?php
+                                        // 系统提供的标准擅长方向
+                                        $systemSpecialties = ['感情', '学业', '桃花', '财运', '事业', '运势', '寻物'];
+                                        $specialties = explode('、', $reader['specialties']);
+                                        foreach ($specialties as $specialtyItem):
+                                            $specialtyItem = trim($specialtyItem);
+                                            // 只显示系统提供的标准标签
+                                            if (!empty($specialtyItem) && in_array($specialtyItem, $systemSpecialties)):
+                                        ?>
+                                            <a href="readers.php?specialty=<?php echo urlencode($specialtyItem); ?>"
+                                               class="specialty-tag"><?php echo h($specialtyItem); ?></a>
+                                        <?php
+                                            endif;
+                                        endforeach;
+                                        ?>
                                     </div>
                                 <?php endif; ?>
                                 
@@ -320,28 +476,41 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                 
                 <!-- 分页 -->
                 <?php if ($totalPages > 1): ?>
+                    <?php
+                    // 构建基础URL参数
+                    function buildPaginationUrl($pageNum, $search = '', $specialty = '') {
+                        $params = ['page' => $pageNum];
+                        if (!empty($search)) {
+                            $params['search'] = $search;
+                        }
+                        if (!empty($specialty)) {
+                            $params['specialty'] = $specialty;
+                        }
+                        return '?' . http_build_query($params);
+                    }
+                    ?>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
-                            <a href="?page=<?php echo $page - 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($specialty) ? '&specialty=' . urlencode($specialty) : ''; ?>"
+                            <a href="<?php echo buildPaginationUrl($page - 1, $search, $specialty); ?>"
                                class="btn btn-secondary">上一页</a>
                         <?php endif; ?>
-                        
+
                         <div class="page-numbers">
                             <?php
                             $start = max(1, $page - 2);
                             $end = min($totalPages, $page + 2);
-                            
+
                             for ($i = $start; $i <= $end; $i++):
                             ?>
-                                <a href="?page=<?php echo $i; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($specialty) ? '&specialty=' . urlencode($specialty) : ''; ?>"
+                                <a href="<?php echo buildPaginationUrl($i, $search, $specialty); ?>"
                                    class="page-number <?php echo $i === $page ? 'active' : ''; ?>">
                                     <?php echo $i; ?>
                                 </a>
                             <?php endfor; ?>
                         </div>
-                        
+
                         <?php if ($page < $totalPages): ?>
-                            <a href="?page=<?php echo $page + 1; ?><?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?><?php echo !empty($specialty) ? '&specialty=' . urlencode($specialty) : ''; ?>"
+                            <a href="<?php echo buildPaginationUrl($page + 1, $search, $specialty); ?>"
                                class="btn btn-secondary">下一页</a>
                         <?php endif; ?>
                     </div>

@@ -151,7 +151,11 @@ function registerUser($data) {
     if (empty($data['full_name'])) {
         $errors[] = '姓名不能为空';
     }
-    
+
+    if (empty($data['gender']) || !in_array($data['gender'], ['male', 'female'])) {
+        $errors[] = '请选择性别';
+    }
+
     // 检查用户名和邮箱是否已存在
     $existingUser = $db->fetchOne("SELECT id FROM users WHERE username = ? OR email = ?", [$data['username'], $data['email']]);
     if ($existingUser) {
@@ -164,12 +168,17 @@ function registerUser($data) {
     
     // 创建用户
     try {
+        // 根据性别设置默认头像
+        $avatar = $data['gender'] === 'male' ? 'img/nm.jpg' : 'img/nf.jpg';
+
         $userId = $db->insert('users', [
             'username' => $data['username'],
             'email' => $data['email'],
             'password_hash' => hashPassword($data['password']),
             'full_name' => $data['full_name'],
-            'phone' => $data['phone'] ?? null
+            'phone' => $data['phone'] ?? null,
+            'gender' => $data['gender'],
+            'avatar' => $avatar
         ]);
         
         return ['success' => true, 'user_id' => $userId];
@@ -222,7 +231,11 @@ function registerReader($data, $token) {
     if (empty($data['experience_years']) || !is_numeric($data['experience_years'])) {
         $errors[] = '请输入有效的从业年数';
     }
-    
+
+    if (empty($data['gender']) || !in_array($data['gender'], ['male', 'female'])) {
+        $errors[] = '请选择性别';
+    }
+
     // 检查用户名和邮箱是否已存在
     $existingReader = $db->fetchOne("SELECT id FROM readers WHERE username = ? OR email = ?", [$data['username'], $data['email']]);
     if ($existingReader) {
@@ -235,16 +248,23 @@ function registerReader($data, $token) {
     
     // 创建塔罗师
     try {
+        // 如果没有上传照片，根据性别设置默认头像
+        $photo = $data['photo'] ?? null;
+        if (empty($photo)) {
+            $photo = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+        }
+
         $readerId = $db->insert('readers', [
             'username' => $data['username'],
             'email' => $data['email'],
             'password_hash' => hashPassword($data['password']),
             'full_name' => $data['full_name'],
             'phone' => $data['phone'] ?? null,
+            'gender' => $data['gender'],
             'experience_years' => (int)$data['experience_years'],
             'specialties' => $data['specialties'] ?? null,
             'description' => $data['description'] ?? null,
-            'photo' => $data['photo'] ?? null,
+            'photo' => $photo,
             'photo_circle' => $data['photo_circle'] ?? null
         ]);
         

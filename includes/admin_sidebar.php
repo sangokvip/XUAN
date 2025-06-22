@@ -33,6 +33,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
+            <a href="<?php echo SITE_URL; ?>/admin/login_security.php"
+               class="<?php echo $current_page === 'login_security.php' ? 'active' : ''; ?>">
+                <span class="icon">🔐</span>
+                登录安全
+            </a>
+        </li>
+        <li>
             <a href="<?php echo SITE_URL; ?>/admin/database_update.php"
                class="<?php echo $current_page === 'database_update.php' ? 'active' : ''; ?>">
                 <span class="icon">🔧</span>

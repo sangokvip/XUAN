@@ -17,7 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'password' => $_POST['password'] ?? '',
         'confirm_password' => $_POST['confirm_password'] ?? '',
         'full_name' => trim($_POST['full_name'] ?? ''),
-        'phone' => trim($_POST['phone'] ?? '')
+        'phone' => trim($_POST['phone'] ?? ''),
+        'gender' => $_POST['gender'] ?? ''
     ];
     
     $result = registerUser($data);
@@ -79,10 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     <div class="form-group">
                         <label for="phone">手机号码（可选）</label>
-                        <input type="tel" id="phone" name="phone" 
+                        <input type="tel" id="phone" name="phone"
                                value="<?php echo h($_POST['phone'] ?? ''); ?>">
                     </div>
-                    
+
+                    <div class="form-group">
+                        <label for="gender">性别</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">请选择性别</option>
+                            <option value="male" <?php echo ($_POST['gender'] ?? '') === 'male' ? 'selected' : ''; ?>>男</option>
+                            <option value="female" <?php echo ($_POST['gender'] ?? '') === 'female' ? 'selected' : ''; ?>>女</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label for="password">密码</label>
                         <input type="password" id="password" name="password" required>

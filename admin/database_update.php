@@ -34,6 +34,83 @@ $availableUpdates = [
         'description' => '为塔罗师表添加certificates字段，用于存储证书图片',
         'sql' => "ALTER TABLE readers ADD COLUMN certificates TEXT DEFAULT NULL COMMENT '证书图片路径（JSON格式）' AFTER photo_circle;",
         'check_sql' => "SHOW COLUMNS FROM readers LIKE 'certificates'"
+    ],
+    'add_gender_fields' => [
+        'name' => '添加性别和头像字段',
+        'description' => '为用户表和塔罗师表添加性别字段，为用户表添加头像字段，并为现有用户随机分配性别和默认头像',
+        'sql' => [
+            "ALTER TABLE users ADD COLUMN gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女' AFTER phone",
+            "ALTER TABLE users ADD COLUMN avatar VARCHAR(255) DEFAULT NULL COMMENT '头像路径' AFTER gender",
+            "ALTER TABLE readers ADD COLUMN gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女' AFTER phone",
+            "UPDATE users SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
+            "UPDATE readers SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
+            "UPDATE users SET avatar = CASE WHEN gender = 'male' THEN 'img/nm.jpg' WHEN gender = 'female' THEN 'img/nf.jpg' ELSE 'img/nm.jpg' END WHERE avatar IS NULL",
+            "UPDATE readers SET photo = CASE WHEN gender = 'male' THEN 'img/tm.jpg' WHEN gender = 'female' THEN 'img/tf.jpg' ELSE 'img/tm.jpg' END WHERE photo IS NULL OR photo = ''"
+        ],
+        'check_sql' => "SHOW COLUMNS FROM users LIKE 'gender'"
+    ],
+    'add_view_count_field' => [
+        'name' => '添加查看次数字段',
+        'description' => '为塔罗师表添加view_count字段，用于存储查看次数，并初始化现有塔罗师的查看次数',
+        'sql' => [
+            "ALTER TABLE readers ADD COLUMN view_count INT DEFAULT 0 COMMENT '查看次数' AFTER description"
+        ],
+        'check_sql' => "SHOW COLUMNS FROM readers LIKE 'view_count'"
+    ],
+    'clean_specialty_tags' => [
+        'name' => '清理专长标签',
+        'description' => '清理塔罗师专长中的异常标签，只保留系统标准标签和符合规范的自定义标签',
+        'sql' => [
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%爱情塔罗%' OR specialties LIKE '%感情%' THEN REPLACE(REPLACE(specialties, '爱情塔罗', '感情'), '爱情', '感情')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%事业塔罗%' THEN REPLACE(specialties, '事业塔罗', '事业')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%财运塔罗%' THEN REPLACE(specialties, '财运塔罗', '财运')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%学业塔罗%' THEN REPLACE(specialties, '学业塔罗', '学业')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%健康塔罗%' THEN REPLACE(specialties, '健康塔罗', '运势')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%人际关系%' THEN REPLACE(specialties, '人际关系', '感情')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%心理咨询%' THEN REPLACE(specialties, '心理咨询', '感情')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%灵性指导%' THEN REPLACE(specialties, '灵性指导', '运势')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%占星术%' THEN REPLACE(specialties, '占星术', '运势')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%水晶疗愈%' THEN REPLACE(specialties, '水晶疗愈', '运势')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%冥想指导%' THEN REPLACE(specialties, '冥想指导', '运势')
+                ELSE specialties
+            END",
+            "UPDATE readers SET specialties = CASE
+                WHEN specialties LIKE '%能量疗愈%' THEN REPLACE(specialties, '能量疗愈', '运势')
+                ELSE specialties
+            END"
+        ],
+        'check_sql' => "SELECT COUNT(*) as count FROM readers WHERE specialties LIKE '%塔罗%' OR specialties LIKE '%疗愈%' OR specialties LIKE '%指导%'"
     ]
 ];
 
@@ -58,22 +135,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_key'])) {
         } else {
             try {
                 // 执行SQL更新
-                $db->query($update['sql']);
+                $sql = $update['sql'];
+                if (is_array($sql)) {
+                    // 如果是SQL数组，逐个执行
+                    foreach ($sql as $statement) {
+                        $db->query($statement);
+                    }
+                } else {
+                    // 如果是单个SQL语句
+                    $db->query($sql);
+                }
+
                 $success = "数据库更新 '{$update['name']}' 执行成功！";
-                
+
                 // 更新状态
                 $currentStatus[$updateKey] = true;
-                
+
                 // 记录更新日志
                 $updateResults[] = [
                     'time' => date('Y-m-d H:i:s'),
                     'update' => $update['name'],
                     'status' => 'success'
                 ];
-                
+
             } catch (Exception $e) {
                 $errors[] = "执行更新 '{$update['name']}' 时发生错误: " . $e->getMessage();
-                
+
                 $updateResults[] = [
                     'time' => date('Y-m-d H:i:s'),
                     'update' => $update['name'],
@@ -95,19 +182,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_all'])) {
     foreach ($availableUpdates as $key => $update) {
         if (!$currentStatus[$key]) {
             try {
-                $db->query($update['sql']);
+                // 执行SQL更新
+                $sql = $update['sql'];
+                if (is_array($sql)) {
+                    // 如果是SQL数组，逐个执行
+                    foreach ($sql as $statement) {
+                        $db->query($statement);
+                    }
+                } else {
+                    // 如果是单个SQL语句
+                    $db->query($sql);
+                }
+
                 $currentStatus[$key] = true;
                 $executedCount++;
-                
+
                 $updateResults[] = [
                     'time' => date('Y-m-d H:i:s'),
                     'update' => $update['name'],
                     'status' => 'success'
                 ];
-                
+
             } catch (Exception $e) {
                 $errors[] = "执行更新 '{$update['name']}' 时发生错误: " . $e->getMessage();
-                
+
                 $updateResults[] = [
                     'time' => date('Y-m-d H:i:s'),
                     'update' => $update['name'],
@@ -356,7 +454,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_all'])) {
                         </div>
                         
                         <div class="update-sql">
-                            <?php echo h($update['sql']); ?>
+                            <?php
+                            $sql = $update['sql'];
+                            if (is_array($sql)) {
+                                foreach ($sql as $i => $statement) {
+                                    echo ($i + 1) . '. ' . h($statement) . ";\n";
+                                }
+                            } else {
+                                echo h($sql);
+                            }
+                            ?>
                         </div>
                         
                         <form method="POST" style="display: inline;">

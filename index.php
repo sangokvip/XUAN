@@ -17,7 +17,7 @@ $featured_readers = getFeaturedReaders();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo getSiteName(); ?></title>
+    <title><?php echo getSiteName(); ?> - <?php echo getSiteDescription(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/home.css">
 </head>
@@ -36,7 +36,8 @@ $featured_readers = getFeaturedReaders();
                             This Is A Question
                         </h1>
                         <p class="hero-description">
-                            与经验丰富的塔罗大师联系，获得个性化解读、深刻的课程和精选产品，提升您的灵性之旅。
+                            联系经验丰富的占卜师，获得个性化准确解读，<br>
+                            更有详细的玄学课程和魔法产品，提升您的灵性之旅。
                         </p>
                         <div class="hero-actions">
                             <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-explore">Explore</a>
@@ -67,7 +68,7 @@ $featured_readers = getFeaturedReaders();
                                 </div>
 
                                 <div class="reader-circle-info">
-                                    <h3 class="reader-name">Master <?php echo htmlspecialchars($reader['full_name']); ?></h3>
+                                    <h3 class="reader-name"><?php echo htmlspecialchars($reader['full_name']); ?></h3>
                                     <p class="reader-experience"><?php echo htmlspecialchars($reader['experience_years']); ?> years of experience</p>
                                 </div>
                             </a>

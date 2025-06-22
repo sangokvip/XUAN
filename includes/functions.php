@@ -74,7 +74,10 @@ function getReaderById($id) {
 /**
  * 获取推荐塔罗师
  */
-function getFeaturedReaders($limit = 6) {
+function getFeaturedReaders($limit = null) {
+    if ($limit === null) {
+        $limit = (int)getSetting('max_featured_readers', 6);
+    }
     $db = Database::getInstance();
     return $db->fetchAll("SELECT * FROM readers WHERE is_featured = 1 AND is_active = 1 ORDER BY created_at DESC LIMIT ?", [$limit]);
 }

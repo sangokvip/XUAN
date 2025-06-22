@@ -3,100 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>清理登录尝试记录</title>
+    <title>🔓 清除登录尝试记录工具 - 解决登录锁定问题</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { color: #d4af37; }
-        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
-        .btn { background: #d4af37; color: #000; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; margin: 5px; }
-        .btn:hover { background: #b8860b; }
-        .btn-danger { background: #dc3545; color: #fff; }
-        .btn-danger:hover { background: #c82333; }
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: bold; }
-        .text-center { text-align: center; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #d4af37;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        h2 {
+            color: #333;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 10px;
+        }
+        h3 {
+            color: #555;
+            margin-top: 25px;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left-color: #17a2b8;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+        .btn {
+            background: #d4af37;
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: #b8860b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .intro {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .container { padding: 20px; }
+            h1 { font-size: 2rem; }
+            table { font-size: 14px; }
+            th, td { padding: 8px; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>清理登录尝试记录</h1>
+        <h1>🔓 清除登录尝试记录工具</h1>
+        <div class="intro">
+            <p>解决"登录尝试次数过多，请15分钟后再试"的问题</p>
+            <p>安全、快速、有效的登录锁定解决方案</p>
+        </div>
         
         <?php
-        require_once 'config/database_config.php';
-        
+        session_start();
+        require_once 'config/config.php';
+
+        // 安全验证 - 只允许管理员或本地访问
+        $allowedIPs = ['127.0.0.1', '::1', 'localhost'];
+        $currentIP = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        $isLocalhost = in_array($currentIP, $allowedIPs) ||
+                       strpos($currentIP, '192.168.') === 0 ||
+                       strpos($currentIP, '10.') === 0;
+
+        $hasAccess = false;
+        if (isset($_SESSION['admin_id']) || $isLocalhost) {
+            $hasAccess = true;
+        }
+
+        if (!$hasAccess) {
+            echo "<div class='status error'>❌ 访问被拒绝：只有管理员或本地访问可以使用此工具</div>";
+            echo "<div class='status info'>💡 如果您是管理员，请先<a href='auth/admin_login.php'>登录管理后台</a></div>";
+            echo "</div></body></html>";
+            exit;
+        }
+
         try {
-            $pdo = new PDO(
-                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET,
-                DB_USER,
-                DB_PASS
-            );
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $db = Database::getInstance();
             
             // 处理清理操作
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $action = $_POST['action'] ?? '';
-                
+
                 if ($action === 'clear_all') {
-                    $stmt = $pdo->prepare("DELETE FROM login_attempts");
-                    $stmt->execute();
-                    $deletedCount = $stmt->rowCount();
-                    echo "<div class='status success'>✓ 已清理所有登录尝试记录，共删除 {$deletedCount} 条记录</div>";
+                    $result = $db->query("DELETE FROM login_attempts");
+                    echo "<div class='status success'>✓ 已清理所有登录尝试记录</div>";
                 }
-                
+
                 elseif ($action === 'clear_failed') {
-                    $stmt = $pdo->prepare("DELETE FROM login_attempts WHERE success = 0");
-                    $stmt->execute();
-                    $deletedCount = $stmt->rowCount();
-                    echo "<div class='status success'>✓ 已清理所有失败的登录尝试记录，共删除 {$deletedCount} 条记录</div>";
+                    $result = $db->query("DELETE FROM login_attempts WHERE success = 0");
+                    echo "<div class='status success'>✓ 已清理所有失败的登录尝试记录</div>";
                 }
-                
+
                 elseif ($action === 'clear_old') {
-                    $stmt = $pdo->prepare("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-                    $stmt->execute();
-                    $deletedCount = $stmt->rowCount();
-                    echo "<div class='status success'>✓ 已清理1小时前的登录尝试记录，共删除 {$deletedCount} 条记录</div>";
+                    $result = $db->query("DELETE FROM login_attempts WHERE attempted_at < DATE_SUB(NOW(), INTERVAL 15 MINUTE)");
+                    echo "<div class='status success'>✓ 已清理15分钟前的登录尝试记录</div>";
                 }
-                
+
                 elseif ($action === 'clear_ip') {
-                    $ip = $_POST['ip_address'] ?? '';
+                    $ip = trim($_POST['ip_address'] ?? '');
                     if (!empty($ip)) {
-                        $stmt = $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ?");
-                        $stmt->execute([$ip]);
-                        $deletedCount = $stmt->rowCount();
-                        echo "<div class='status success'>✓ 已清理IP {$ip} 的登录尝试记录，共删除 {$deletedCount} 条记录</div>";
+                        $result = $db->query("DELETE FROM login_attempts WHERE ip_address = ?", [$ip]);
+                        echo "<div class='status success'>✓ 已清理IP {$ip} 的登录尝试记录</div>";
+                    } else {
+                        echo "<div class='status error'>❌ 请输入有效的IP地址</div>";
                     }
+                }
+
+                elseif ($action === 'clear_username') {
+                    $username = trim($_POST['username'] ?? '');
+                    if (!empty($username)) {
+                        $result = $db->query("DELETE FROM login_attempts WHERE username = ?", [$username]);
+                        echo "<div class='status success'>✓ 已清理用户 {$username} 的登录尝试记录</div>";
+                    } else {
+                        echo "<div class='status error'>❌ 请输入有效的用户名</div>";
+                    }
+                }
+
+                elseif ($action === 'unblock_all_ips') {
+                    echo "<div class='status info'>💡 当前系统使用简单的IP封锁机制，无需数据库解封操作</div>";
+                }
+
+                elseif ($action === 'unblock_ip') {
+                    echo "<div class='status info'>💡 当前系统使用简单的IP封锁机制，无需数据库解封操作</div>";
                 }
             }
             
             // 获取当前登录尝试统计
-            echo "<h2>当前登录尝试统计</h2>";
-            
-            $totalAttempts = $pdo->query("SELECT COUNT(*) FROM login_attempts")->fetchColumn();
-            $failedAttempts = $pdo->query("SELECT COUNT(*) FROM login_attempts WHERE success = 0")->fetchColumn();
-            $successAttempts = $pdo->query("SELECT COUNT(*) FROM login_attempts WHERE success = 1")->fetchColumn();
-            $recentFailed = $pdo->query("SELECT COUNT(*) FROM login_attempts WHERE success = 0 AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)")->fetchColumn();
+            echo "<h2>📊 当前登录尝试统计</h2>";
+
+            $totalAttempts = $db->fetchOne("SELECT COUNT(*) as count FROM login_attempts")['count'] ?? 0;
+            $failedAttempts = $db->fetchOne("SELECT COUNT(*) as count FROM login_attempts WHERE success = 0")['count'] ?? 0;
+            $successAttempts = $db->fetchOne("SELECT COUNT(*) as count FROM login_attempts WHERE success = 1")['count'] ?? 0;
+            $recentFailed = $db->fetchOne("SELECT COUNT(*) as count FROM login_attempts WHERE success = 0 AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)")['count'] ?? 0;
             
             echo "<div class='info'>";
-            echo "<p><strong>总登录尝试次数:</strong> {$totalAttempts}</p>";
-            echo "<p><strong>失败尝试次数:</strong> {$failedAttempts}</p>";
-            echo "<p><strong>成功尝试次数:</strong> {$successAttempts}</p>";
-            echo "<p><strong>最近15分钟失败次数:</strong> {$recentFailed}</p>";
+            echo "<p><strong>📈 总登录尝试次数:</strong> {$totalAttempts}</p>";
+            echo "<p><strong>❌ 失败尝试次数:</strong> {$failedAttempts}</p>";
+            echo "<p><strong>✅ 成功尝试次数:</strong> {$successAttempts}</p>";
+            echo "<p><strong>⏰ 最近15分钟失败次数:</strong> {$recentFailed}</p>";
+            if ($recentFailed >= 5) {
+                echo "<p style='color: red;'><strong>🚨 警告：</strong>最近15分钟失败次数过多，可能导致登录锁定</p>";
+            }
             echo "</div>";
             
             // 显示最近的登录尝试
-            echo "<h2>最近的登录尝试记录</h2>";
-            $recentAttempts = $pdo->query("
-                SELECT username, success, ip_address, attempted_at 
-                FROM login_attempts 
-                ORDER BY attempted_at DESC 
+            echo "<h2>📋 最近的登录尝试记录</h2>";
+            $recentAttempts = $db->fetchAll("
+                SELECT username, success, ip_address, attempted_at
+                FROM login_attempts
+                ORDER BY attempted_at DESC
                 LIMIT 20
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ");
             
             if (!empty($recentAttempts)) {
                 echo "<table>";
@@ -116,15 +254,15 @@
             }
             
             // 显示被锁定的IP和用户
-            echo "<h2>当前被锁定的账户/IP</h2>";
-            $lockedAccounts = $pdo->query("
+            echo "<h2>🔒 当前被锁定的账户/IP</h2>";
+            $lockedAccounts = $db->fetchAll("
                 SELECT username, ip_address, COUNT(*) as failed_count, MAX(attempted_at) as last_attempt
-                FROM login_attempts 
+                FROM login_attempts
                 WHERE success = 0 AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)
                 GROUP BY username, ip_address
                 HAVING failed_count >= 5
                 ORDER BY failed_count DESC
-            ")->fetchAll(PDO::FETCH_ASSOC);
+            ");
             
             if (!empty($lockedAccounts)) {
                 echo "<div class='warning'>";
@@ -146,41 +284,50 @@
             }
             
             ?>
-            
-            <h2>清理操作</h2>
-            
+
+            <h2>🧹 清理操作</h2>
+
             <div class="warning">
-                <p><strong>注意：</strong>清理操作将永久删除登录尝试记录，请谨慎操作。</p>
+                <p><strong>⚠️ 注意：</strong>清理操作将永久删除登录尝试记录，请谨慎操作。</p>
             </div>
-            
+
+            <!-- 快速解决方案 -->
+            <div class="success" style="margin-bottom: 20px;">
+                <h3>🚀 快速解决登录锁定问题</h3>
+                <p><strong>推荐操作：</strong>点击下方"清理失败记录"按钮，然后立即尝试登录。</p>
+                <form method="POST" style="display: inline;">
+                    <input type="hidden" name="action" value="clear_failed">
+                    <button type="submit" class="btn" style="background: #28a745; color: white; font-size: 16px; padding: 15px 30px;" onclick="return confirm('确定要清理所有失败的登录尝试记录吗？这将解除所有登录锁定。')">
+                        🔓 立即解除登录锁定
+                    </button>
+                </form>
+            </div>
+
+            <!-- 其他清理选项 -->
+            <h3>其他清理选项</h3>
+
             <!-- 清理所有记录 -->
             <form method="POST" style="display: inline;">
                 <input type="hidden" name="action" value="clear_all">
-                <button type="submit" class="btn btn-danger" onclick="return confirm('确定要清理所有登录尝试记录吗？')">
-                    清理所有记录
+                <button type="submit" class="btn btn-danger" onclick="return confirm('确定要清理所有登录尝试记录吗？这将删除所有历史记录。')">
+                    🗑️ 清理所有记录
                 </button>
             </form>
-            
-            <!-- 清理失败记录 -->
-            <form method="POST" style="display: inline;">
-                <input type="hidden" name="action" value="clear_failed">
-                <button type="submit" class="btn" onclick="return confirm('确定要清理所有失败的登录尝试记录吗？')">
-                    清理失败记录
-                </button>
-            </form>
-            
+
             <!-- 清理旧记录 -->
             <form method="POST" style="display: inline;">
                 <input type="hidden" name="action" value="clear_old">
                 <button type="submit" class="btn">
-                    清理1小时前的记录
+                    ⏰ 清理15分钟前的记录
                 </button>
             </form>
-            
+
+
+
             <!-- 清理特定IP -->
             <div style="margin-top: 20px;">
-                <h3>清理特定IP的记录</h3>
-                <form method="POST" style="display: flex; gap: 10px; align-items: end;">
+                <h3>🎯 清理特定IP的记录</h3>
+                <form method="POST" style="display: flex; gap: 10px; align-items: end; margin-bottom: 15px;">
                     <div style="flex: 1;">
                         <label for="ip_address">IP地址:</label>
                         <input type="text" id="ip_address" name="ip_address" placeholder="例如: 192.168.1.1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
@@ -189,31 +336,61 @@
                     <button type="submit" class="btn">清理此IP记录</button>
                 </form>
             </div>
+
+            <!-- 清理特定用户名 -->
+            <div style="margin-top: 20px;">
+                <h3>👤 清理特定用户的记录</h3>
+                <form method="POST" style="display: flex; gap: 10px; align-items: end;">
+                    <div style="flex: 1;">
+                        <label for="username">用户名:</label>
+                        <input type="text" id="username" name="username" placeholder="例如: admin" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <input type="hidden" name="action" value="clear_username">
+                    <button type="submit" class="btn">清理此用户记录</button>
+                </form>
+            </div>
             
             <?php
-            
+
         } catch (Exception $e) {
-            echo "<div class='status error'>数据库连接失败: " . $e->getMessage() . "</div>";
+            echo "<div class='status error'>❌ 数据库操作失败: " . htmlspecialchars($e->getMessage()) . "</div>";
+            echo "<div class='status info'>💡 请检查数据库连接配置或联系技术支持。</div>";
         }
         ?>
-        
+
         <div class="status info">
-            <h3>解决登录锁定的步骤：</h3>
+            <h3>📖 解决登录锁定的步骤：</h3>
             <ol>
-                <li>点击"清理失败记录"按钮清理所有失败的登录尝试</li>
-                <li>或者点击"清理所有记录"完全重置登录尝试记录</li>
-                <li>清理完成后，立即尝试登录管理后台</li>
-                <li>如果仍有问题，检查用户名和密码是否正确</li>
+                <li><strong>快速解决：</strong>点击上方绿色的"🔓 立即解除登录锁定"按钮</li>
+                <li><strong>清理完成后：</strong>立即访问 <a href="auth/admin_login.php" target="_blank" style="color: #d4af37; font-weight: bold;">管理员登录页面</a> 重新登录</li>
+                <li><strong>如果仍有问题：</strong>检查用户名和密码是否正确</li>
+                <li><strong>持续问题：</strong>可以尝试"清理所有记录"进行完全重置</li>
             </ol>
         </div>
-        
+
         <div class="status success">
-            <p><strong>推荐操作：</strong></p>
-            <p>点击"清理失败记录"按钮，然后访问 <a href="auth/admin_login.php" target="_blank">管理员登录页面</a> 重新登录。</p>
+            <h3>🎯 常见问题解决方案：</h3>
+            <ul>
+                <li><strong>管理员登录被锁：</strong>点击"立即解除登录锁定"</li>
+                <li><strong>特定IP被封：</strong>使用"清理特定IP"功能</li>
+                <li><strong>用户反馈无法登录：</strong>清理该用户的登录记录</li>
+                <li><strong>系统整体登录异常：</strong>清理所有失败记录</li>
+            </ul>
         </div>
-        
+
         <div class="status warning">
-            <p><strong>完成后请删除此文件 (clear_login_attempts.php) 以确保安全。</strong></p>
+            <h3>⚠️ 安全提醒</h3>
+            <p><strong>使用完毕后请立即删除此文件 (clear_login_attempts.php) 以确保网站安全。</strong></p>
+            <p>此工具仅供紧急情况使用，不建议长期保留在服务器上。</p>
+        </div>
+
+        <div class="status info">
+            <p><strong>🔗 相关链接：</strong></p>
+            <p>
+                <a href="auth/admin_login.php" target="_blank" style="color: #d4af37;">管理员登录</a> |
+                <a href="admin/dashboard.php" target="_blank" style="color: #d4af37;">管理后台</a> |
+                <a href="index.php" target="_blank" style="color: #d4af37;">网站首页</a>
+            </p>
         </div>
     </div>
 </body>

@@ -20,8 +20,14 @@ if (!$reader) {
 $user = null;
 $canViewContact = false;
 $hasViewedContact = false;
+$isAdmin = false;
 
-if (isset($_SESSION['user_id'])) {
+// 检查管理员登录状态
+if (isset($_SESSION['admin_id'])) {
+    $isAdmin = true;
+    $canViewContact = true;
+    $hasViewedContact = true; // 管理员默认已查看
+} elseif (isset($_SESSION['user_id'])) {
     $user = getUserById($_SESSION['user_id']);
     $hasViewedContact = hasViewedContact($_SESSION['user_id'], $readerId);
     $canViewContact = true;
@@ -30,11 +36,16 @@ if (isset($_SESSION['user_id'])) {
 // 处理查看联系方式请求
 $showContact = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $canViewContact) {
-    if (!$hasViewedContact) {
+    if ($isAdmin) {
+        // 管理员直接显示联系方式，不记录查看记录
+        $showContact = true;
+    } elseif (!$hasViewedContact && isset($_SESSION['user_id'])) {
         recordContactView($_SESSION['user_id'], $readerId);
         $hasViewedContact = true;
+        $showContact = true;
+    } else {
+        $showContact = true;
     }
-    $showContact = true;
 }
 
 // 获取查看统计
@@ -198,6 +209,120 @@ $totalViews = $viewStats['total_views'] ?? 0;
                 padding: 10px 12px;
             }
         }
+
+        /* 管理员模式横幅 */
+        .admin-mode-banner {
+            background: linear-gradient(135deg, #d4af37, #f1c40f);
+            color: #1a1a1a;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .admin-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .admin-icon {
+            font-size: 1.5rem;
+        }
+
+        .admin-text {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .admin-note {
+            color: #2c3e50;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .admin-link {
+            background: rgba(26, 26, 26, 0.1);
+            color: #1a1a1a;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(26, 26, 26, 0.2);
+        }
+
+        .admin-link:hover {
+            background: rgba(26, 26, 26, 0.2);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .admin-banner-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .admin-note {
+                min-width: auto;
+            }
+        }
+
+        /* 专长标签样式 */
+        .specialties-section {
+            margin-bottom: 30px;
+        }
+
+        .specialties-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .specialty-tags-detail {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .specialty-tag-detail {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .specialty-tag-detail.system-tag {
+            background: linear-gradient(135deg, #d4af37, #ffd700);
+            color: #000;
+            border: 1px solid #d4af37;
+        }
+
+        .specialty-tag-detail.custom-tag {
+            background: linear-gradient(135deg, #6c757d, #868e96);
+            color: white;
+            border: 1px solid #6c757d;
+        }
+
+        .specialty-tag-detail:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .specialty-tags-detail {
+                gap: 6px;
+            }
+
+            .specialty-tag-detail {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -205,6 +330,17 @@ $totalViews = $viewStats['total_views'] ?? 0;
     
     <main>
         <div class="container">
+            <?php if ($isAdmin): ?>
+                <div class="admin-mode-banner">
+                    <div class="admin-banner-content">
+                        <span class="admin-icon">👑</span>
+                        <span class="admin-text">管理员模式</span>
+                        <span class="admin-note">您正以管理员身份浏览，可查看所有联系方式</span>
+                        <a href="<?php echo SITE_URL; ?>/admin/dashboard.php" class="admin-link">返回后台</a>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <div class="reader-detail">
                 <!-- 返回按钮 -->
                 <div class="back-link">
@@ -244,7 +380,23 @@ $totalViews = $viewStats['total_views'] ?? 0;
                         <?php if (!empty($reader['specialties'])): ?>
                             <div class="specialties-section">
                                 <h3>擅长方向</h3>
-                                <p><?php echo h($reader['specialties']); ?></p>
+                                <div class="specialty-tags-detail">
+                                    <?php
+                                    $systemSpecialties = ['感情', '学业', '桃花', '财运', '事业', '运势', '寻物'];
+                                    $specialties = explode('、', $reader['specialties']);
+                                    foreach ($specialties as $specialtyItem):
+                                        $specialtyItem = trim($specialtyItem);
+                                        if (!empty($specialtyItem)):
+                                            $isSystemTag = in_array($specialtyItem, $systemSpecialties);
+                                    ?>
+                                        <span class="specialty-tag-detail <?php echo $isSystemTag ? 'system-tag' : 'custom-tag'; ?>">
+                                            <?php echo h($specialtyItem); ?>
+                                        </span>
+                                    <?php
+                                        endif;
+                                    endforeach;
+                                    ?>
+                                </div>
                             </div>
                         <?php endif; ?>
                         
@@ -277,6 +429,13 @@ $totalViews = $viewStats['total_views'] ?? 0;
                             <a href="<?php echo SITE_URL; ?>/auth/login.php?redirect=<?php echo urlencode($_SERVER['REQUEST_URI']); ?>" class="btn btn-primary">立即登录</a>
                             <a href="<?php echo SITE_URL; ?>/auth/register.php" class="btn btn-secondary">注册账户</a>
                         </div>
+                    <?php elseif ($isAdmin): ?>
+                        <!-- 管理员直接显示联系方式 -->
+                        <div class="admin-contact-notice">
+                            <p style="color: #d4af37; font-weight: 500; margin-bottom: 15px;">
+                                <i class="icon-admin"></i> 管理员模式：可直接查看所有联系方式
+                            </p>
+                        </div>
                     <?php elseif (!$showContact): ?>
                         <div class="contact-preview">
                             <p>点击下方按钮查看 <?php echo h($reader['full_name']); ?> 的联系方式</p>
@@ -284,7 +443,9 @@ $totalViews = $viewStats['total_views'] ?? 0;
                                 <button type="submit" name="view_contact" class="btn btn-primary">查看联系方式</button>
                             </form>
                         </div>
-                    <?php else: ?>
+                    <?php endif; ?>
+
+                    <?php if ($showContact || $isAdmin): ?>
                         <div class="contact-info">
                             <?php if (!empty($reader['contact_info'])): ?>
                                 <div class="contact-details">
@@ -376,13 +537,15 @@ $totalViews = $viewStats['total_views'] ?? 0;
                             <?php foreach ($relatedReaders as $relatedReader): ?>
                                 <div class="reader-card">
                                     <div class="reader-photo">
-                                        <?php if (!empty($relatedReader['photo'])): ?>
-                                            <img src="<?php echo h($relatedReader['photo']); ?>" alt="<?php echo h($relatedReader['full_name']); ?>">
-                                        <?php else: ?>
-                                            <div class="default-photo">
-                                                <i class="icon-user"></i>
-                                            </div>
-                                        <?php endif; ?>
+                                        <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $relatedReader['id']; ?>" class="reader-photo-link">
+                                            <?php if (!empty($relatedReader['photo'])): ?>
+                                                <img src="<?php echo h($relatedReader['photo']); ?>" alt="<?php echo h($relatedReader['full_name']); ?>">
+                                            <?php else: ?>
+                                                <div class="default-photo">
+                                                    <i class="icon-user"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </a>
                                     </div>
                                     
                                     <div class="reader-info">

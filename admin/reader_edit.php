@@ -23,6 +23,14 @@ if (!$reader) {
     exit;
 }
 
+// 获取当前查看次数（优先从readers表的view_count字段获取，如果为空则从contact_views计算）
+$currentViewCount = $reader['view_count'] ?? 0;
+if ($currentViewCount == 0) {
+    // 如果view_count字段为0，则从contact_views表计算实际查看次数
+    $viewCountResult = $db->fetchOne("SELECT COUNT(*) as count FROM contact_views WHERE reader_id = ?", [$readerId]);
+    $currentViewCount = $viewCountResult['count'] ?? 0;
+}
+
 // 处理表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = [
@@ -34,13 +42,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'description' => trim($_POST['description'] ?? ''),
         'custom_specialty' => trim($_POST['custom_specialty'] ?? ''),
         'is_active' => isset($_POST['is_active']) ? 1 : 0,
-        'is_featured' => isset($_POST['is_featured']) ? 1 : 0
+        'is_featured' => isset($_POST['is_featured']) ? 1 : 0,
+        'view_count' => max(0, (int)($_POST['view_count'] ?? $currentViewCount))
     ];
     
     // 处理擅长方向
     $specialties = $_POST['specialties'] ?? [];
     if (!empty($data['custom_specialty'])) {
-        $specialties[] = $data['custom_specialty'];
+        // 分割多个自定义标签（用逗号或顿号分隔）
+        $customTags = preg_split('/[,，、]/', $data['custom_specialty']);
+        $validCustomTags = [];
+
+        foreach ($customTags as $tag) {
+            $tag = trim($tag);
+            // 检查标签长度不超过4个字
+            if (!empty($tag) && mb_strlen($tag) <= 4) {
+                $validCustomTags[] = $tag;
+            }
+        }
+
+        // 限制自定义标签不超过3个
+        $validCustomTags = array_slice($validCustomTags, 0, 3);
+
+        // 添加到专长列表
+        foreach ($validCustomTags as $tag) {
+            $specialties[] = $tag;
+        }
     }
     $specialtiesStr = implode('、', $specialties);
     
@@ -131,12 +158,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // 如果没有错误，更新数据库
     if (empty($errors)) {
+        // 处理查看次数修改 - 直接更新readers表的view_count字段
+        $newViewCount = $data['view_count'];
+        if ($newViewCount != $currentViewCount) {
+            // 直接更新readers表的view_count字段
+            $updateData['view_count'] = $newViewCount;
+        } else {
+            // 如果没有修改，从updateData中移除view_count
+            unset($updateData['view_count']);
+        }
+
         $result = $db->update('readers', $updateData, 'id = ?', [$readerId]);
-        
+
         if ($result) {
             $success = '塔罗师信息更新成功！';
             // 重新获取更新后的数据
             $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
+            // 重新获取查看次数
+            $currentViewCount = $reader['view_count'] ?? 0;
         } else {
             $errors[] = '数据库更新失败';
         }
@@ -378,10 +417,19 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                             </div>
                         </div>
                         
-                        <div class="form-group">
-                            <label for="experience_years">从业年数 *</label>
-                            <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
-                                   value="<?php echo h($reader['experience_years']); ?>">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="experience_years">从业年数 *</label>
+                                <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
+                                       value="<?php echo h($reader['experience_years']); ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="view_count">查看次数</label>
+                                <input type="number" id="view_count" name="view_count" min="0"
+                                       value="<?php echo $currentViewCount; ?>">
+                                <small>当前查看次数：<?php echo $currentViewCount; ?>，可手动调整</small>
+                            </div>
                         </div>
 
                         <!-- 占卜方向选择 -->
@@ -413,7 +461,8 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                             <div class="custom-specialty">
                                 <label for="custom_specialty">其他占卜方向（可选）</label>
                                 <input type="text" id="custom_specialty" name="custom_specialty"
-                                       placeholder="请填写其他擅长的占卜方向">
+                                       placeholder="请填写其他擅长方向，用逗号分隔，每个不超过4字，最多3个">
+                                <small>注意：自定义标签只在个人页面显示，列表页面只显示系统标准标签</small>
                             </div>
                         </div>
                         

@@ -8,17 +8,17 @@ if (session_status() === PHP_SESSION_NONE) {
     ini_set('session.use_only_cookies', 1);
     ini_set('session.cookie_secure', 0); // HTTPS环境下设为1
     ini_set('session.cookie_samesite', 'Strict');
-    
+
     // 设置会话名称
     session_name('TAROT_SESSION');
-    
+
     // 启动会话
     session_start();
-    
-    // 验证会话
-    if (!validateSession()) {
+
+    // 验证会话（只对已登录用户进行验证）
+    if ((isset($_SESSION['user_id']) || isset($_SESSION['reader_id']) || isset($_SESSION['admin_id'])) && !validateSession()) {
         session_destroy();
-        redirect('/auth/login.php');
+        session_start(); // 重新启动一个新的会话
     }
 }
 
@@ -30,10 +30,10 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 
 // 内容安全策略
 $csp = "default-src 'self'; " .
-       "script-src 'self' 'unsafe-inline'; " .
+       "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
        "style-src 'self' 'unsafe-inline'; " .
-       "img-src 'self' data:; " .
-       "font-src 'self' data: *.alicdn.com; " .
+       "img-src 'self' data: blob:; " .
+       "font-src 'self' data: *.alicdn.com chrome-extension:; " .
        "connect-src 'self'; " .
        "frame-ancestors 'none';";
 header("Content-Security-Policy: $csp");

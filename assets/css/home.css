@@ -3,12 +3,14 @@
 /* 英雄区域 */
 .hero-section {
     position: relative;
-    min-height: auto;
+    min-height: 400px;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    padding: 80px 0;
+    padding: 60px 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .hero-background {
@@ -17,10 +19,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-    background-image:
-        radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.1) 0%, transparent 50%);
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
 }
 
 .hero-overlay {
@@ -29,7 +28,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .hero-content {
@@ -37,53 +36,77 @@
     z-index: 2;
     text-align: center;
     color: white;
-    padding: 20px 0;
+    padding: 40px 0;
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .hero-title {
-    font-size: 3.5rem;
+    font-size: 3.2rem;
     font-weight: 700;
     line-height: 1.2;
-    margin-bottom: 30px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: -0.01em;
+    color: #ffffff;
 }
 
 .hero-description {
-    font-size: 1.2rem;
-    line-height: 1.6;
-    margin-bottom: 40px;
-    max-width: 600px;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: 35px;
+    max-width: 700px;
     margin-left: auto;
     margin-right: auto;
-    opacity: 0.9;
-    font-weight: 300;
+    opacity: 0.95;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .hero-actions {
-    margin-top: 40px;
+    margin-top: 30px;
 }
 
 .btn-explore {
-    background: linear-gradient(135deg, #f1c40f, #f39c12);
-    color: #2c3e50;
-    padding: 15px 40px;
-    font-size: 1.1rem;
+    background: linear-gradient(135deg, #d4af37, #ffd700);
+    color: #000000;
+    padding: 14px 35px;
+    font-size: 1rem;
     font-weight: 600;
     border: none;
-    border-radius: 50px;
+    border-radius: 25px;
     text-decoration: none;
     display: inline-block;
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(241, 196, 15, 0.3);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
 }
 
 .btn-explore:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(241, 196, 15, 0.4);
-    background: linear-gradient(135deg, #f39c12, #e67e22);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+    background: linear-gradient(135deg, #b8860b, #d4af37);
+}
+
+/* 确保按钮在移动端完全可见 */
+@media (max-width: 768px) {
+    .btn-explore {
+        margin-bottom: 20px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .hero-section {
+        padding-bottom: 80px;
+    }
+
+    .hero-content .container {
+        padding: 0 15px;
+    }
 }
 
 /* 推荐塔罗师区域 */
@@ -137,6 +160,26 @@
     text-decoration: none;
     color: inherit;
     display: block;
+    transition: all 0.3s ease;
+    border-radius: 50%;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.reader-circle-link:hover {
+    transform: scale(1.05);
+}
+
+.reader-circle-link:focus {
+    outline: none;
+}
+
+.reader-circle-link:active {
+    outline: none;
 }
 
 .reader-circle-photo {
@@ -162,6 +205,17 @@
     height: 100%;
     object-fit: cover;
     object-position: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+    border-radius: 50%;
 }
 
 .default-circle-photo {
@@ -236,18 +290,33 @@
 }
 
 @media (max-width: 768px) {
+    .hero-section {
+        padding: 60px 0;
+        min-height: 380px;
+    }
+
+    .hero-content {
+        padding: 20px;
+    }
+
     .hero-title {
         font-size: 2.5rem;
+        margin-bottom: 18px;
     }
-    
+
     .hero-description {
-        font-size: 1.1rem;
-        padding: 0 20px;
-    }
-    
-    .btn-explore {
-        padding: 12px 30px;
         font-size: 1rem;
+        padding: 0 20px;
+        margin-bottom: 30px;
+    }
+
+    .hero-actions {
+        margin-top: 30px;
+    }
+
+    .btn-explore {
+        padding: 13px 32px;
+        font-size: 0.95rem;
     }
     
     .section-title {
@@ -273,13 +342,42 @@
 }
 
 @media (max-width: 480px) {
+    .hero-section {
+        padding: 50px 0 80px 0;
+        min-height: 420px;
+    }
+
+    .hero-content {
+        padding: 20px 10px 30px 10px;
+    }
+
+    .hero-content .container {
+        padding: 0 10px;
+    }
+
     .hero-title {
         font-size: 2rem;
         line-height: 1.3;
+        margin-bottom: 15px;
     }
-    
+
     .hero-description {
-        font-size: 1rem;
+        font-size: 0.9rem;
+        padding: 0 10px;
+        margin-bottom: 25px;
+        line-height: 1.6;
+    }
+
+    .hero-actions {
+        margin-top: 25px;
+        margin-bottom: 20px;
+    }
+
+    .btn-explore {
+        padding: 14px 30px;
+        font-size: 0.9rem;
+        letter-spacing: 0.8px;
+        margin-bottom: 10px;
     }
     
     .featured-readers-section {
@@ -305,6 +403,46 @@
     }
 }
 
+/* 超小屏幕优化 */
+@media (max-width: 360px) {
+    .hero-section {
+        padding: 40px 0 70px 0;
+        min-height: 400px;
+    }
+
+    .hero-content {
+        padding: 15px 5px 25px 5px;
+    }
+
+    .hero-content .container {
+        padding: 0 5px;
+    }
+
+    .hero-title {
+        font-size: 1.8rem;
+        line-height: 1.3;
+        margin-bottom: 12px;
+    }
+
+    .hero-description {
+        font-size: 0.85rem;
+        padding: 0 5px;
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .hero-actions {
+        margin-top: 20px;
+        margin-bottom: 15px;
+    }
+
+    .btn-explore {
+        padding: 12px 25px;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+}
+
 /* 动画效果 */
 @keyframes fadeInUp {
     from {
@@ -327,16 +465,4 @@
 .reader-circle-card:nth-child(4) { animation-delay: 0.4s; }
 .reader-circle-card:nth-child(5) { animation-delay: 0.5s; }
 
-/* 背景装饰 */
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="tarot" patternUnits="userSpaceOnUse" width="100" height="100"><circle cx="50" cy="50" r="2" fill="%23d4af37" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23tarot)"/></svg>');
-    opacity: 0.3;
-    z-index: 1;
-}
+

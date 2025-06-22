@@ -26,7 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 处理擅长方向
     $specialties = $_POST['specialties'] ?? [];
     if (!empty($data['custom_specialty'])) {
-        $specialties[] = $data['custom_specialty'];
+        // 分割多个自定义标签（用逗号或顿号分隔）
+        $customTags = preg_split('/[,，、]/', $data['custom_specialty']);
+        $validCustomTags = [];
+
+        foreach ($customTags as $tag) {
+            $tag = trim($tag);
+            // 检查标签长度不超过4个字
+            if (!empty($tag) && mb_strlen($tag) <= 4) {
+                $validCustomTags[] = $tag;
+            }
+        }
+
+        // 限制自定义标签不超过3个
+        $validCustomTags = array_slice($validCustomTags, 0, 3);
+
+        // 添加到专长列表
+        foreach ($validCustomTags as $tag) {
+            $specialties[] = $tag;
+        }
     }
     $specialtiesStr = implode('、', $specialties);
     
@@ -414,8 +432,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="custom-specialty">
                                     <label for="custom_specialty">其他占卜方向（可选）</label>
                                     <input type="text" id="custom_specialty" name="custom_specialty"
-                                           placeholder="请填写其他擅长的占卜方向"
+                                           placeholder="请填写其他擅长方向，用逗号分隔，每个不超过4字，最多3个"
                                            value="<?php echo h($_POST['custom_specialty'] ?? ''); ?>">
+                                    <small>注意：自定义标签只在个人页面显示，列表页面只显示系统标准标签</small>
                                 </div>
                             </div>
                             

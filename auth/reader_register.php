@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'confirm_password' => $_POST['confirm_password'] ?? '',
         'full_name' => trim($_POST['full_name'] ?? ''),
         'phone' => trim($_POST['phone'] ?? ''),
+        'gender' => $_POST['gender'] ?? '',
         'experience_years' => (int)($_POST['experience_years'] ?? 0),
         'description' => trim($_POST['description'] ?? '')
     ];
@@ -51,7 +52,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 处理自定义占卜方向
     $customSpecialty = trim($_POST['custom_specialty'] ?? '');
     if (!empty($customSpecialty)) {
-        $specialties[] = '其他：' . $customSpecialty;
+        // 分割多个自定义标签（用逗号或顿号分隔）
+        $customTags = preg_split('/[,，、]/', $customSpecialty);
+        $validCustomTags = [];
+
+        foreach ($customTags as $tag) {
+            $tag = trim($tag);
+            // 检查标签长度不超过4个字
+            if (!empty($tag) && mb_strlen($tag) <= 4) {
+                $validCustomTags[] = $tag;
+            }
+        }
+
+        // 限制自定义标签不超过3个
+        $validCustomTags = array_slice($validCustomTags, 0, 3);
+
+        // 添加到专长列表
+        foreach ($validCustomTags as $tag) {
+            $specialties[] = $tag;
+        }
     }
 
     $data['specialties'] = implode('、', $specialties);
@@ -62,8 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = '请填写所有必填字段';
     }
 
-    if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
-        $errors[] = '请上传头像照片';
+    // 检查是否使用默认头像
+    $useDefaultAvatar = isset($_POST['use_default_avatar']) && $_POST['use_default_avatar'] === '1';
+
+    if (!$useDefaultAvatar && (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK)) {
+        $errors[] = '请上传头像照片或选择使用默认头像';
     }
 
     if ($data['password'] !== $data['confirm_password']) {
@@ -84,8 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 如果没有错误，处理注册
     if (empty($errors)) {
-        // 处理头像上传
-        $file = $_FILES['photo'];
+        // 处理头像
+        if ($useDefaultAvatar) {
+            // 使用默认头像
+            $data['photo'] = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+
+            $result = registerReader($data, $token);
+            if ($result['success']) {
+                $success = '注册成功！请使用您的用户名和密码登录。';
+                // 清空表单数据
+                $data = [];
+            } else {
+                $errors = $result['errors'];
+            }
+        } else {
+            // 处理头像上传
+            $file = $_FILES['photo'];
 
         // 使用绝对路径确保目录存在（从auth目录访问上级目录）
         $absolutePhotoPath = '../' . PHOTO_PATH;
@@ -149,6 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $errors[] = '头像上传失败，请检查目录权限';
             }
+        }
         }
     }
 }
@@ -289,6 +326,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 grid-template-columns: repeat(2, 1fr) !important;
             }
         }
+
+        /* 头像上传控制区域 */
+        .photo-upload-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .photo-upload-controls input[type="file"] {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        #use-default-avatar-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        #use-default-avatar-btn:hover {
+            background: linear-gradient(135deg, #218838, #1ea085);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        #use-default-avatar-btn.active {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+            color: #000;
+        }
+
+        .crop-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .crop-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .photo-upload-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .photo-upload-controls input[type="file"] {
+                min-width: auto;
+            }
+
+            #use-default-avatar-btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
     </style>
 </head>
 <body class="auth-page">
@@ -316,9 +422,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <!-- 头像上传 -->
                     <div class="form-group photo-upload-enhanced">
                         <label for="photo">头像照片 *</label>
-                        <input type="file" id="photo" name="photo" accept="image/*" required>
+                        <div class="photo-upload-controls">
+                            <input type="file" id="photo" name="photo" accept="image/*" required>
+                            <button type="button" id="use-default-avatar-btn" class="btn btn-secondary btn-small">使用系统默认头像</button>
+                        </div>
                         <input type="hidden" id="photo_circle_data" name="photo_circle_data">
-                        <small>请上传清晰的个人照片，支持JPG、PNG格式，文件大小不超过5MB。上传后可以剪裁圆形头像用于首页展示。</small>
+                        <input type="hidden" id="use_default_avatar" name="use_default_avatar" value="0">
+                        <small>请上传清晰的个人照片，支持JPG、PNG格式，文件大小不超过5MB。上传后可以剪裁圆形头像用于首页展示。或者点击按钮使用系统默认头像。</small>
 
                         <div class="current-photos" id="photo-previews" style="display: none;">
                             <div class="photo-preview">
@@ -358,15 +468,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         <div class="form-group">
                             <label for="phone">手机号码</label>
-                            <input type="tel" id="phone" name="phone" 
+                            <input type="tel" id="phone" name="phone"
                                    value="<?php echo h($_POST['phone'] ?? ''); ?>">
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="experience_years">从业年数 *</label>
-                        <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
-                               value="<?php echo h($_POST['experience_years'] ?? ''); ?>">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="gender">性别 *</label>
+                            <select id="gender" name="gender" required>
+                                <option value="">请选择性别</option>
+                                <option value="male" <?php echo ($_POST['gender'] ?? '') === 'male' ? 'selected' : ''; ?>>男</option>
+                                <option value="female" <?php echo ($_POST['gender'] ?? '') === 'female' ? 'selected' : ''; ?>>女</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="experience_years">从业年数 *</label>
+                            <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
+                                   value="<?php echo h($_POST['experience_years'] ?? ''); ?>">
+                        </div>
                     </div>
 
                     <!-- 占卜方向选择 -->
@@ -398,8 +519,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="custom-specialty">
                             <label for="custom_specialty">其他占卜方向（可选）</label>
                             <input type="text" id="custom_specialty" name="custom_specialty"
-                                   placeholder="请填写其他擅长的占卜方向"
+                                   placeholder="请填写其他擅长方向，用逗号分隔，每个不超过4字，最多3个"
                                    value="<?php echo h($_POST['custom_specialty'] ?? ''); ?>">
+                            <small>注意：自定义标签只在个人页面显示，列表页面只显示系统标准标签</small>
                         </div>
                     </div>
                     
@@ -504,13 +626,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const originalPreview = document.getElementById('original-preview');
             const circlePreview = document.getElementById('circle-preview');
             const cropButton = document.getElementById('crop-photo-btn');
+            const useDefaultAvatarBtn = document.getElementById('use-default-avatar-btn');
+            const useDefaultAvatarInput = document.getElementById('use_default_avatar');
 
             let originalFile = null;
             let circleBlob = null;
+            let usingDefaultAvatar = false;
+
+            // 默认头像按钮事件
+            useDefaultAvatarBtn.addEventListener('click', function() {
+                if (usingDefaultAvatar) {
+                    // 取消使用默认头像
+                    usingDefaultAvatar = false;
+                    useDefaultAvatarInput.value = '0';
+                    useDefaultAvatarBtn.textContent = '使用系统默认头像';
+                    useDefaultAvatarBtn.classList.remove('active');
+                    photoInput.required = true;
+                    photoPreviews.style.display = 'none';
+                } else {
+                    // 使用默认头像
+                    usingDefaultAvatar = true;
+                    useDefaultAvatarInput.value = '1';
+                    useDefaultAvatarBtn.textContent = '已选择默认头像';
+                    useDefaultAvatarBtn.classList.add('active');
+                    photoInput.required = false;
+                    photoInput.value = '';
+                    photoPreviews.style.display = 'none';
+                    cropButton.style.display = 'none';
+                }
+            });
 
             photoInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
                 if (!file) return;
+
+                // 取消默认头像选择
+                if (usingDefaultAvatar) {
+                    usingDefaultAvatar = false;
+                    useDefaultAvatarInput.value = '0';
+                    useDefaultAvatarBtn.textContent = '使用系统默认头像';
+                    useDefaultAvatarBtn.classList.remove('active');
+                    photoInput.required = true;
+                }
 
                 originalFile = file;
 
@@ -533,6 +690,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
 
             function cropPhoto(file) {
+                if (!window.imageCropper) {
+                    console.error('图片剪裁工具未加载');
+                    alert('图片剪裁工具加载失败，请刷新页面重试');
+                    return;
+                }
+
                 window.imageCropper.show(file)
                     .then(function(blob) {
                         circleBlob = blob;
@@ -555,6 +718,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     .catch(function(error) {
                         if (error !== 'cancelled') {
                             console.error('剪裁失败:', error);
+                            alert('图片剪裁失败，请重试');
                         }
                     });
             }

@@ -94,13 +94,15 @@ if (!empty($query)) {
                                 <?php endif; ?>
                                 
                                 <div class="reader-photo">
-                                    <?php if (!empty($reader['photo'])): ?>
-                                        <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
-                                    <?php else: ?>
-                                        <div class="default-photo">
-                                            <i class="icon-user">🔮</i>
-                                        </div>
-                                    <?php endif; ?>
+                                    <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-photo-link">
+                                        <?php if (!empty($reader['photo'])): ?>
+                                            <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
+                                        <?php else: ?>
+                                            <div class="default-photo">
+                                                <i class="icon-user">🔮</i>
+                                            </div>
+                                        <?php endif; ?>
+                                    </a>
                                 </div>
 
                                 <div class="reader-info">
