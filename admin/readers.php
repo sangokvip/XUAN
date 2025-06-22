@@ -350,6 +350,12 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                 批量删除选中塔罗师
                             </button>
                         </form>
+
+                        <!-- 工具链接 -->
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a href="clear_cache.php" class="btn btn-info" title="清除缓存以更新排序">清除缓存</a>
+                            <a href="fix_default_avatars.php" class="btn btn-secondary" title="修复默认头像问题">修复头像</a>
+                        </div>
                     </div>
                 </div>
             </div>

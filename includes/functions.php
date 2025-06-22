@@ -72,14 +72,22 @@ function getReaderById($id) {
 }
 
 /**
- * 获取推荐塔罗师
+ * 获取推荐塔罗师（按查看次数排序）
  */
 function getFeaturedReaders($limit = null) {
     if ($limit === null) {
         $limit = (int)getSetting('max_featured_readers', 6);
     }
     $db = Database::getInstance();
-    return $db->fetchAll("SELECT * FROM readers WHERE is_featured = 1 AND is_active = 1 ORDER BY created_at DESC LIMIT ?", [$limit]);
+    return $db->fetchAll(
+        "SELECT r.*,
+                COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count
+         FROM readers r
+         WHERE r.is_featured = 1 AND r.is_active = 1
+         ORDER BY view_count DESC, r.created_at DESC
+         LIMIT ?",
+        [$limit]
+    );
 }
 
 /**

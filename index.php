@@ -57,14 +57,17 @@ $featured_readers = getFeaturedReaders();
                             <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-circle-link">
                                 <div class="reader-circle-photo">
                                     <?php if (!empty($reader['photo_circle'])): ?>
-                                        <img src="<?php echo htmlspecialchars($reader['photo_circle']); ?>" alt="<?php echo htmlspecialchars($reader['full_name']); ?>">
+                                        <img src="<?php echo htmlspecialchars($reader['photo_circle']); ?>"
+                                             alt="<?php echo htmlspecialchars($reader['full_name']); ?>"
+                                             onerror="this.style.display='none'; this.parentNode.querySelector('.default-circle-photo').style.display='flex';">
                                     <?php elseif (!empty($reader['photo'])): ?>
-                                        <img src="<?php echo htmlspecialchars($reader['photo']); ?>" alt="<?php echo htmlspecialchars($reader['full_name']); ?>">
-                                    <?php else: ?>
-                                        <div class="default-circle-photo">
-                                            <i class="icon-user">👤</i>
-                                        </div>
+                                        <img src="<?php echo htmlspecialchars($reader['photo']); ?>"
+                                             alt="<?php echo htmlspecialchars($reader['full_name']); ?>"
+                                             onerror="this.style.display='none'; this.parentNode.querySelector('.default-circle-photo').style.display='flex';">
                                     <?php endif; ?>
+                                    <div class="default-circle-photo" style="display: <?php echo (!empty($reader['photo_circle']) || !empty($reader['photo'])) ? 'none' : 'flex'; ?>;">
+                                        <i class="icon-user">👤</i>
+                                    </div>
                                 </div>
 
                                 <div class="reader-circle-info">
