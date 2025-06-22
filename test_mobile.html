@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移动端测试</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-info {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-info h3 {
+            color: #d4af37;
+            margin-bottom: 10px;
+        }
+        .test-info p {
+            margin: 5px 0;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h3>移动端菜单测试</h3>
+        <p>请在移动设备或浏览器开发者工具的移动端模式下查看此页面</p>
+        <p>检查点：</p>
+        <ul>
+            <li>桌面端：登录和搜索按钮应该在右上角显示</li>
+            <li>移动端：登录和搜索功能应该在汉堡菜单中</li>
+            <li>移动端：点击汉堡菜单应该显示完整的导航菜单</li>
+        </ul>
+    </div>
+
+    <!-- 模拟header -->
+    <header class="site-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1><a href="index.php">塔罗师展示平台</a></h1>
+                </div>
+
+                <!-- 移动端菜单按钮 -->
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+
+                <nav class="main-nav" id="mainNav">
+                    <ul>
+                        <li><a href="index.php">首页</a></li>
+                        <li><a href="readers.php">占卜师</a></li>
+                        <li><a href="courses.php">西玄课程</a></li>
+                        <li><a href="products.php">魔法产品</a></li>
+                        <li><a href="contact.php">联系我们</a></li>
+                        
+                        <!-- 移动端专用菜单项 -->
+                        <li class="mobile-only mobile-divider"></li>
+                        
+                        <!-- 搜索功能 -->
+                        <li class="mobile-only mobile-search">
+                            <form action="search.php" method="GET" class="mobile-search-form">
+                                <input type="text" name="q" placeholder="搜索占卜师..." class="mobile-search-input">
+                                <button type="submit" class="mobile-search-btn">搜索</button>
+                            </form>
+                        </li>
+                        
+                        <!-- 登录按钮 -->
+                        <li class="mobile-only"><a href="auth/login.php" class="mobile-login-btn">登录</a></li>
+                    </ul>
+                </nav>
+
+                <div class="header-actions">
+                    <!-- 用户菜单 -->
+                    <div class="user-menu">
+                        <div class="auth-links">
+                            <a href="auth/login.php" class="btn btn-login">登录</a>
+                        </div>
+                    </div>
+
+                    <!-- 搜索图标 -->
+                    <div class="search-icon-container">
+                        <button type="button" class="search-icon-btn" onclick="toggleSearchBox()">🔍</button>
+                        <div class="search-dropdown" id="searchDropdown" style="display: none;">
+                            <form action="search.php" method="GET" class="search-form">
+                                <input type="text" name="q" placeholder="搜索占卜师..." class="search-input" id="searchInput">
+                                <button type="submit" class="search-submit-btn">搜索</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 移动端菜单遮罩 -->
+        <div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="closeMobileMenu()"></div>
+    </header>
+
+    <div class="test-info">
+        <h3>当前屏幕宽度检测</h3>
+        <p id="screenWidth">正在检测...</p>
+        <p id="mobileStatus">正在检测...</p>
+    </div>
+
+    <script>
+        // 移动端菜单切换
+        function toggleMobileMenu() {
+            const nav = document.getElementById('mainNav');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            const overlay = document.getElementById('mobileNavOverlay');
+
+            nav.classList.toggle('mobile-nav-open');
+            toggle.classList.toggle('active');
+            overlay.classList.toggle('active');
+
+            // 防止背景滚动
+            if (nav.classList.contains('mobile-nav-open')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        // 关闭移动端菜单
+        function closeMobileMenu() {
+            const nav = document.getElementById('mainNav');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            const overlay = document.getElementById('mobileNavOverlay');
+
+            nav.classList.remove('mobile-nav-open');
+            toggle.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // 搜索框切换
+        function toggleSearchBox() {
+            const dropdown = document.getElementById('searchDropdown');
+            const input = document.getElementById('searchInput');
+
+            if (dropdown.style.display === 'none') {
+                dropdown.style.display = 'block';
+                input.focus();
+            } else {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        // 屏幕宽度检测
+        function updateScreenInfo() {
+            const width = window.innerWidth;
+            document.getElementById('screenWidth').textContent = `屏幕宽度: ${width}px`;
+            document.getElementById('mobileStatus').textContent = width <= 768 ? '当前为移动端模式' : '当前为桌面端模式';
+        }
+
+        // 初始化和监听窗口大小变化
+        updateScreenInfo();
+        window.addEventListener('resize', updateScreenInfo);
+
+        // 点击外部关闭菜单和搜索框
+        document.addEventListener('click', function(event) {
+            const nav = document.getElementById('mainNav');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            const searchContainer = document.querySelector('.search-icon-container');
+            const dropdown = document.getElementById('searchDropdown');
+
+            // 关闭移动端菜单
+            if (!nav.contains(event.target) && !toggle.contains(event.target)) {
+                closeMobileMenu();
+            }
+
+            // 关闭搜索框
+            if (searchContainer && !searchContainer.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        // ESC键关闭菜单和搜索框
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeMobileMenu();
+                document.getElementById('searchDropdown').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

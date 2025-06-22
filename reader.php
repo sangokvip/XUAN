@@ -1,0 +1,407 @@
+<?php
+session_start();
+require_once 'config/config.php';
+
+// 获取塔罗师ID
+$readerId = (int)($_GET['id'] ?? 0);
+
+if (!$readerId) {
+    redirect('readers.php');
+}
+
+// 获取塔罗师信息
+$reader = getReaderById($readerId);
+
+if (!$reader) {
+    redirect('readers.php');
+}
+
+// 检查用户是否已登录
+$user = null;
+$canViewContact = false;
+$hasViewedContact = false;
+
+if (isset($_SESSION['user_id'])) {
+    $user = getUserById($_SESSION['user_id']);
+    $hasViewedContact = hasViewedContact($_SESSION['user_id'], $readerId);
+    $canViewContact = true;
+}
+
+// 处理查看联系方式请求
+$showContact = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $canViewContact) {
+    if (!$hasViewedContact) {
+        recordContactView($_SESSION['user_id'], $readerId);
+        $hasViewedContact = true;
+    }
+    $showContact = true;
+}
+
+// 获取查看统计
+$db = Database::getInstance();
+$viewStats = $db->fetchOne(
+    "SELECT COUNT(*) as total_views FROM contact_views WHERE reader_id = ?",
+    [$readerId]
+);
+$totalViews = $viewStats['total_views'] ?? 0;
+?>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo h($reader['full_name']); ?> - 塔罗师详情</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=<?php echo time(); ?>">
+    <style>
+        /* 强制修复塔罗师照片显示 - 完整显示图片 */
+        .reader-photo {
+            height: 250px !important;
+            overflow: hidden !important;
+            position: relative !important;
+            background: #f8f9fa !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .reader-photo img {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            transition: transform 0.3s ease !important;
+        }
+
+        .reader-photo-large {
+            max-width: 100% !important;
+            max-height: 400px !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+            border-radius: 15px !important;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .default-photo {
+            width: calc(100% - 20px) !important;
+            height: calc(100% - 20px) !important;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 48px !important;
+            color: #6c757d !important;
+            border: 2px dashed #d4af37 !important;
+            border-radius: 10px !important;
+            margin: 10px !important;
+            box-sizing: border-box !important;
+        }
+
+        .default-photo-large {
+            width: 300px !important;
+            height: 400px !important;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 80px !important;
+            color: #6c757d !important;
+            border: 2px dashed #d4af37 !important;
+            border-radius: 15px !important;
+            box-sizing: border-box !important;
+        }
+
+        .price-list-image img {
+            max-width: 100% !important;
+            height: auto !important;
+            object-fit: contain !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        /* 联系方式样式 */
+        .contact-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            border-left: 4px solid #d4af37;
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+        }
+
+        .contact-icon {
+            font-size: 18px;
+            min-width: 20px;
+        }
+
+        .contact-value {
+            color: #333;
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .contact-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #d4af37;
+        }
+
+        .contact-details h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .contact-text {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .contact-note {
+            background: linear-gradient(135deg, #e7f3ff, #cce7ff);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #007bff;
+        }
+
+        .contact-note p {
+            margin: 0;
+            color: #004085;
+        }
+
+        @media (max-width: 768px) {
+            .contact-methods {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .contact-item {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <?php include 'includes/header.php'; ?>
+    
+    <main>
+        <div class="container">
+            <div class="reader-detail">
+                <!-- 返回按钮 -->
+                <div class="back-link">
+                    <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-secondary">← 返回塔罗师列表</a>
+                </div>
+                
+                <div class="reader-profile">
+                    <div class="reader-photo-section">
+                        <?php if (!empty($reader['photo'])): ?>
+                            <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>" class="reader-photo-large">
+                        <?php else: ?>
+                            <div class="default-photo-large">
+                                <i class="icon-user"></i>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if ($reader['is_featured']): ?>
+                            <div class="featured-badge-large">推荐塔罗师</div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="reader-info-section">
+                        <h1><?php echo h($reader['full_name']); ?></h1>
+                        
+                        <div class="reader-meta-large">
+                            <div class="meta-item">
+                                <strong>从业年数：</strong><?php echo h($reader['experience_years']); ?> 年
+                            </div>
+                            <div class="meta-item">
+                                <strong>查看次数：</strong><?php echo $totalViews; ?> 次
+                            </div>
+                            <div class="meta-item">
+                                <strong>注册时间：</strong><?php echo date('Y年m月', strtotime($reader['created_at'])); ?>
+                            </div>
+                        </div>
+                        
+                        <?php if (!empty($reader['specialties'])): ?>
+                            <div class="specialties-section">
+                                <h3>擅长方向</h3>
+                                <p><?php echo h($reader['specialties']); ?></p>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if (!empty($reader['description'])): ?>
+                            <div class="description-section">
+                                <h3>个人简介</h3>
+                                <p><?php echo nl2br(h($reader['description'])); ?></p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <!-- 价格列表 -->
+                <?php if (!empty($reader['price_list_image'])): ?>
+                    <div class="price-list-section">
+                        <h2>服务价格</h2>
+                        <div class="price-list-image">
+                            <img src="<?php echo h($reader['price_list_image']); ?>" alt="价格列表">
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
+                <!-- 联系方式 -->
+                <div class="contact-section">
+                    <h2>联系方式</h2>
+                    
+                    <?php if (!$canViewContact): ?>
+                        <div class="login-required">
+                            <p>查看塔罗师联系方式需要先登录</p>
+                            <a href="<?php echo SITE_URL; ?>/auth/login.php?redirect=<?php echo urlencode($_SERVER['REQUEST_URI']); ?>" class="btn btn-primary">立即登录</a>
+                            <a href="<?php echo SITE_URL; ?>/auth/register.php" class="btn btn-secondary">注册账户</a>
+                        </div>
+                    <?php elseif (!$showContact): ?>
+                        <div class="contact-preview">
+                            <p>点击下方按钮查看 <?php echo h($reader['full_name']); ?> 的联系方式</p>
+                            <form method="POST">
+                                <button type="submit" name="view_contact" class="btn btn-primary">查看联系方式</button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <div class="contact-info">
+                            <?php if (!empty($reader['contact_info'])): ?>
+                                <div class="contact-details">
+                                    <h3>📝 联系信息</h3>
+                                    <div class="contact-text">
+                                        <?php echo nl2br(h($reader['contact_info'])); ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="contact-methods">
+                                <?php if (!empty($reader['phone'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">📞</span>
+                                        <strong>电话：</strong>
+                                        <span class="contact-value"><?php echo h($reader['phone']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($reader['wechat'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">💬</span>
+                                        <strong>微信：</strong>
+                                        <span class="contact-value"><?php echo h($reader['wechat']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($reader['qq'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">🐧</span>
+                                        <strong>QQ：</strong>
+                                        <span class="contact-value"><?php echo h($reader['qq']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($reader['xiaohongshu'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">📖</span>
+                                        <strong>小红书：</strong>
+                                        <span class="contact-value"><?php echo h($reader['xiaohongshu']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($reader['douyin'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">🎵</span>
+                                        <strong>抖音：</strong>
+                                        <span class="contact-value"><?php echo h($reader['douyin']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if (!empty($reader['other_contact'])): ?>
+                                    <div class="contact-item">
+                                        <span class="contact-icon">🔗</span>
+                                        <strong>其他：</strong>
+                                        <span class="contact-value"><?php echo h($reader['other_contact']); ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="contact-item">
+                                    <span class="contact-icon">📧</span>
+                                    <strong>邮箱：</strong>
+                                    <span class="contact-value"><?php echo h($reader['email']); ?></span>
+                                </div>
+                            </div>
+
+                            <div class="contact-note">
+                                <p><strong>💡 温馨提示：</strong>请通过以上方式联系塔罗师预约服务。建议先了解服务内容和价格再进行预约。</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                
+                <!-- 相关推荐 -->
+                <?php
+                $relatedReaders = $db->fetchAll(
+                    "SELECT * FROM readers 
+                     WHERE id != ? AND is_active = 1 
+                     ORDER BY is_featured DESC, RAND() 
+                     LIMIT 3",
+                    [$readerId]
+                );
+                ?>
+                
+                <?php if (!empty($relatedReaders)): ?>
+                    <div class="related-readers">
+                        <h2>其他推荐塔罗师</h2>
+                        <div class="readers-grid">
+                            <?php foreach ($relatedReaders as $relatedReader): ?>
+                                <div class="reader-card">
+                                    <div class="reader-photo">
+                                        <?php if (!empty($relatedReader['photo'])): ?>
+                                            <img src="<?php echo h($relatedReader['photo']); ?>" alt="<?php echo h($relatedReader['full_name']); ?>">
+                                        <?php else: ?>
+                                            <div class="default-photo">
+                                                <i class="icon-user"></i>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="reader-info">
+                                        <h3><?php echo h($relatedReader['full_name']); ?></h3>
+                                        <p>从业 <?php echo h($relatedReader['experience_years']); ?> 年</p>
+                                        <?php if (!empty($relatedReader['specialties'])): ?>
+                                            <p><?php echo h(mb_substr($relatedReader['specialties'], 0, 30)); ?>...</p>
+                                        <?php endif; ?>
+                                        <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $relatedReader['id']; ?>" class="btn btn-primary">查看详情</a>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </main>
+    
+    <?php include 'includes/footer.php'; ?>
+</body>
+</html>

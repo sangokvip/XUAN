@@ -1,0 +1,470 @@
+/* 塔罗师后台样式 */
+
+/* 塔罗师后台布局 */
+.reader-container {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    min-height: calc(100vh - 80px);
+    gap: 0;
+}
+
+.reader-sidebar {
+    background: linear-gradient(180deg, #1a1a1a, #2d2d2d);
+    color: #fff;
+    padding: 30px 0;
+}
+
+.reader-content {
+    background: #f8f8f8;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+/* 侧边栏样式 */
+.sidebar-nav {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar-nav li {
+    margin-bottom: 5px;
+}
+
+.sidebar-nav a {
+    display: block;
+    padding: 15px 25px;
+    color: #ccc;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav a.active {
+    background: rgba(212, 175, 55, 0.1);
+    color: #d4af37;
+    border-left-color: #d4af37;
+}
+
+.sidebar-nav .icon {
+    margin-right: 10px;
+    width: 16px;
+    display: inline-block;
+}
+
+/* 统计卡片 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #d4af37;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* 个人资料概览 */
+.profile-overview {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 25px;
+    align-items: start;
+}
+
+.profile-photo {
+    text-align: center;
+}
+
+.profile-photo img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #d4af37;
+}
+
+.profile-info h3 {
+    color: #1a1a1a;
+    margin-bottom: 15px;
+    font-size: 24px;
+}
+
+.profile-info p {
+    margin-bottom: 10px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.profile-info strong {
+    color: #d4af37;
+}
+
+/* 当前照片和价格列表显示 */
+.current-photo,
+.current-price-list {
+    margin-bottom: 25px;
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+}
+
+/* 个人资料页面的照片样式 */
+.current-photo .profile-photo,
+.current-photo img.profile-photo {
+    max-width: 250px;
+    max-height: 300px;
+    width: auto;
+    height: auto;
+    border-radius: 10px;
+    border: 3px solid #d4af37;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    object-fit: cover;
+    display: block;
+    margin: 15px auto;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.current-photo .profile-photo:hover,
+.current-photo img.profile-photo:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 价格列表图片样式 */
+.current-price-list .price-list-image,
+.current-price-list img.price-list-image {
+    max-width: 400px;
+    max-height: 600px;
+    width: auto;
+    height: auto;
+    border-radius: 10px;
+    border: 2px solid #d4af37;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    object-fit: contain;
+    display: block;
+    margin: 15px auto;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.current-price-list .price-list-image:hover,
+.current-price-list img.price-list-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 图片信息文本 */
+.current-photo p,
+.current-price-list p {
+    margin: 8px 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.current-photo h3,
+.current-price-list h3 {
+    color: #1a1a1a;
+    margin-bottom: 15px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* 无照片/价格列表时的样式 */
+.no-photo,
+.no-price-list {
+    text-align: center;
+    padding: 40px 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px dashed #d4af37;
+    margin-bottom: 20px;
+}
+
+.no-photo p,
+.no-price-list p {
+    color: #666;
+    font-style: italic;
+    margin: 0;
+}
+
+/* 文件上传样式 */
+.form-group input[type="file"] {
+    padding: 10px;
+    border: 2px dashed #d4af37;
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.form-group input[type="file"]:hover {
+    background: #f0f0f0;
+    border-color: #b8860b;
+}
+
+/* 无数据提示 */
+.no-data {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+    padding: 40px;
+}
+
+/* 链接容器 */
+.link-container {
+    display: flex;
+    gap: 10px;
+    margin: 15px 0;
+    align-items: center;
+}
+
+.link-container input {
+    flex: 1;
+    font-family: monospace;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* 塔罗师后台头部 */
+.reader-header {
+    background: linear-gradient(135deg, #000000, #1a1a1a);
+    color: #fff;
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.reader-header .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reader-header .logo h1 {
+    color: #d4af37;
+    font-size: 24px;
+}
+
+.reader-header .user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #ccc;
+}
+
+.reader-header .user-name {
+    color: #d4af37;
+    font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .reader-container {
+        grid-template-columns: 1fr;
+    }
+
+    .reader-sidebar {
+        order: 1;
+        padding: 15px 0;
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+        border-bottom: 2px solid #d4af37;
+    }
+
+    .reader-content {
+        order: 2;
+        padding: 20px;
+    }
+
+    .sidebar-nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 0 15px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .sidebar-nav li {
+        margin-bottom: 0;
+        margin-right: 8px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .sidebar-nav a {
+        padding: 12px 16px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+        min-width: 85px;
+        text-align: center;
+    }
+
+    .sidebar-nav a:hover,
+    .sidebar-nav a.active {
+        border-left: none;
+        border-bottom-color: #d4af37;
+        background: rgba(212, 175, 55, 0.2);
+        color: #d4af37;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .stat-card {
+        padding: 20px;
+    }
+
+    .stat-number {
+        font-size: 28px;
+    }
+
+    .profile-overview {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 20px;
+    }
+
+    /* 移动端图片尺寸调整 */
+    .current-photo .profile-photo,
+    .current-photo img.profile-photo {
+        max-width: 200px;
+        max-height: 250px;
+    }
+
+    .current-price-list .price-list-image,
+    .current-price-list img.price-list-image {
+        max-width: 300px;
+        max-height: 450px;
+    }
+
+    .link-container {
+        flex-direction: column;
+    }
+
+    .reader-header .header-content {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .reader-content {
+        padding: 15px;
+    }
+
+    .reader-sidebar {
+        padding: 10px 0;
+    }
+
+    .sidebar-nav {
+        padding: 0 10px;
+    }
+
+    .sidebar-nav a {
+        padding: 10px 12px;
+        font-size: 13px;
+        min-width: 75px;
+    }
+
+    .sidebar-nav .icon {
+        display: block;
+        margin: 0 0 4px 0;
+        font-size: 16px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    /* 小屏幕图片尺寸进一步调整 */
+    .current-photo .profile-photo,
+    .current-photo img.profile-photo {
+        max-width: 150px;
+        max-height: 200px;
+    }
+
+    .current-price-list .price-list-image,
+    .current-price-list img.price-list-image {
+        max-width: 250px;
+        max-height: 350px;
+    }
+
+    .current-photo,
+    .current-price-list {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .no-photo,
+    .no-price-list {
+        padding: 30px 15px;
+    }
+}
+
+/* 塔罗师后台Footer样式 */
+.reader-footer {
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+    color: #ccc;
+    text-align: center;
+    padding: 20px 0;
+    margin-top: 40px;
+    border-top: 3px solid #d4af37;
+}
+
+.reader-footer p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.reader-footer .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}

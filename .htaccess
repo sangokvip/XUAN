@@ -1,0 +1,160 @@
+# 塔罗师展示平台 - Apache配置
+
+# 启用重写引擎
+RewriteEngine On
+
+# 安全设置
+# 禁止访问敏感文件和目录
+<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|sql|conf|bak)$">
+    Require all denied
+</FilesMatch>
+
+# 禁止访问配置目录
+<Directory "config">
+    Require all denied
+</Directory>
+
+# 禁止访问日志目录
+<Directory "logs">
+    Require all denied
+</Directory>
+
+# 禁止访问数据库目录
+<Directory "database">
+    Require all denied
+</Directory>
+
+# 禁止访问缓存目录（除了缩略图）
+<Directory "cache">
+    <FilesMatch "\.(jpg|jpeg|png|gif)$">
+        Require all granted
+    </FilesMatch>
+    <FilesMatch "^(?!.*\.(jpg|jpeg|png|gif)$).*$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+# 防止目录浏览
+Options -Indexes
+
+# 安全头部
+<IfModule mod_headers.c>
+    # 防止XSS攻击
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # 防止MIME类型嗅探
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # 防止点击劫持
+    Header always set X-Frame-Options "DENY"
+    
+    # 引用策略
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # 内容安全策略
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data: *.alicdn.com; connect-src 'self'; frame-ancestors 'none';"
+</IfModule>
+
+# 文件上传安全
+# 禁止执行上传目录中的PHP文件
+<Directory "uploads">
+    <FilesMatch "\.php$">
+        Require all denied
+    </FilesMatch>
+    
+    # 只允许图片文件
+    <FilesMatch "\.(jpg|jpeg|png|gif)$">
+        Require all granted
+    </FilesMatch>
+    
+    # 禁止其他文件类型
+    <FilesMatch "^(?!.*\.(jpg|jpeg|png|gif)$).*$">
+        Require all denied
+    </FilesMatch>
+</Directory>
+
+# 压缩设置
+<IfModule mod_deflate.c>
+    # 压缩文本文件
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>
+
+# 缓存设置
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # 图片缓存1个月
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    
+    # CSS和JS缓存1周
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/pdf "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType application/x-javascript "access plus 1 week"
+    
+    # HTML文件不缓存
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# URL重写规则
+# 友好URL（可选）
+# RewriteRule ^reader/([0-9]+)/?$ reader.php?id=$1 [L,QSA]
+# RewriteRule ^readers/page/([0-9]+)/?$ readers.php?page=$1 [L,QSA]
+
+# 强制HTTPS（生产环境启用）
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 防止热链接（可选）
+# RewriteCond %{HTTP_REFERER} !^$
+# RewriteCond %{HTTP_REFERER} !^http(s)?://(www\.)?yourdomain\.com [NC]
+# RewriteRule \.(jpg|jpeg|png|gif)$ - [NC,F,L]
+
+# 限制请求方法
+<LimitExcept GET POST HEAD>
+    Require all denied
+</LimitExcept>
+
+# 错误页面
+ErrorDocument 403 /error/403.html
+ErrorDocument 404 /error/404.html
+ErrorDocument 500 /error/500.html
+
+# PHP设置
+<IfModule mod_php7.c>
+    # 隐藏PHP版本
+    php_flag expose_php off
+    
+    # 文件上传限制
+    php_value upload_max_filesize 5M
+    php_value post_max_size 6M
+    php_value max_execution_time 30
+    php_value max_input_time 30
+    
+    # 会话安全
+    php_flag session.cookie_httponly on
+    php_flag session.use_only_cookies on
+    php_value session.cookie_lifetime 0
+</IfModule>
+
+# 防止访问版本控制文件
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# 防止访问备份文件
+<FilesMatch "\~$">
+    Require all denied
+</FilesMatch>
