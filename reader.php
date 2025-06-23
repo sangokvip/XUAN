@@ -113,7 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review']) && i
         $isAnonymous = isset($_POST['is_anonymous']);
 
         $reviewManager->addReview($readerId, $_SESSION['user_id'], $rating, $reviewText, $isAnonymous);
-        $reviewSuccess = '评价提交成功！';
+
+        // 重定向避免重复提交
+        header("Location: reader.php?id={$readerId}&review_success=1");
+        exit;
     } catch (Exception $e) {
         $reviewError = $e->getMessage();
     }
@@ -126,7 +129,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_question']) &&
         $isAnonymous = isset($_POST['question_anonymous']);
 
         $reviewManager->addQuestion($readerId, $_SESSION['user_id'], $question, $isAnonymous);
-        $questionSuccess = '问题提交成功！';
+
+        // 重定向避免重复提交
+        header("Location: reader.php?id={$readerId}&question_success=1");
+        exit;
     } catch (Exception $e) {
         $questionError = $e->getMessage();
     }
@@ -140,16 +146,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_answer']) && i
         $isAnonymous = isset($_POST['answer_anonymous']);
 
         $reviewManager->addAnswer($questionId, $_SESSION['user_id'], $answer, $isAnonymous);
-        $questionSuccess = '回答提交成功！';
+
+        // 重定向避免重复提交
+        header("Location: reader.php?id={$readerId}&answer_success=1");
+        exit;
     } catch (Exception $e) {
         $questionError = $e->getMessage();
     }
 }
 
+// 处理成功消息显示
+$reviewSuccess = '';
+$questionSuccess = '';
+
+if (isset($_GET['review_success'])) {
+    $reviewSuccess = '评价提交成功！';
+}
+
+if (isset($_GET['question_success'])) {
+    $questionSuccess = '问题提交成功！';
+}
+
+if (isset($_GET['answer_success'])) {
+    $questionSuccess = '回答提交成功！';
+}
+
 // 获取评价数据
-$reviewStats = $reviewManager->getReviewStats($readerId);
-$reviews = $reviewManager->getReviews($readerId, 10, 0);
-$questions = $reviewManager->getQuestions($readerId, 5, 0);
+$reviewStats = [];
+$reviews = [];
+$questions = [];
+
+if (class_exists('ReviewManager')) {
+    try {
+        $reviewStats = $reviewManager->getReviewStats($readerId);
+        $reviews = $reviewManager->getReviews($readerId, 10, 0);
+        $questions = $reviewManager->getQuestions($readerId, 5, 0);
+    } catch (Exception $e) {
+        // 如果评价系统出错，使用默认值
+        $reviewStats = [
+            'total_reviews' => 0,
+            'average_rating' => 0,
+            'rating_5' => 0,
+            'rating_4' => 0,
+            'rating_3' => 0,
+            'rating_2' => 0,
+            'rating_1' => 0
+        ];
+    }
+}
 
 // 检查用户权限
 $canReview = false;
@@ -381,7 +425,6 @@ if (isset($_SESSION['user_id'])) {
         }
 
         /* 评价系统样式 - 优化版 */
-        .review-stats-section,
         .review-form-section,
         .reviews-list,
         .questions-section {
@@ -392,7 +435,6 @@ if (isset($_SESSION['user_id'])) {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
-        .review-stats-section h2,
         .reviews-list h3,
         .questions-section h3 {
             margin: 0 0 15px 0;
@@ -406,82 +448,7 @@ if (isset($_SESSION['user_id'])) {
             color: #1f2937;
         }
 
-        /* 评分统计 - 紧凑布局 */
-        .review-stats {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 25px;
-            align-items: center;
-        }
 
-        .average-rating {
-            text-align: center;
-            min-width: 120px;
-        }
-
-        .rating-number {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: #f59e0b;
-            display: block;
-            line-height: 1;
-        }
-
-        .stars {
-            margin: 8px 0 5px 0;
-        }
-
-        .star {
-            font-size: 1.1rem;
-            color: #e5e7eb;
-        }
-
-        .star.filled {
-            color: #f59e0b;
-        }
-
-        .total-reviews {
-            color: #6b7280;
-            font-size: 0.85rem;
-        }
-
-        .rating-breakdown {
-            max-width: 300px;
-        }
-
-        .rating-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
-        }
-
-        .rating-label {
-            width: 25px;
-            font-size: 0.85rem;
-            color: #6b7280;
-        }
-
-        .bar-container {
-            flex: 1;
-            height: 6px;
-            background: #f3f4f6;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            height: 100%;
-            background: #f59e0b;
-            transition: width 0.3s ease;
-        }
-
-        .rating-count {
-            width: 25px;
-            text-align: right;
-            font-size: 0.85rem;
-            color: #6b7280;
-        }
 
         /* 评价表单 - 紧凑布局 */
         .review-form {
@@ -687,6 +654,39 @@ if (isset($_SESSION['user_id'])) {
             border-color: #667eea;
         }
 
+        /* 紧凑评分显示样式 */
+        .rating-summary-compact {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rating-display-compact {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stars-compact {
+            display: flex;
+            gap: 1px;
+        }
+
+        .star-compact {
+            font-size: 14px;
+            color: #e5e7eb;
+        }
+
+        .star-compact.filled {
+            color: #f59e0b;
+        }
+
+        .rating-text-compact {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
         /* 问答系统 - 紧凑布局 */
         .question-form-section {
             background: #f8fafc;
@@ -849,15 +849,6 @@ if (isset($_SESSION['user_id'])) {
 
         /* 响应式优化 */
         @media (max-width: 768px) {
-            .review-stats {
-                grid-template-columns: 1fr;
-                gap: 15px;
-                text-align: center;
-            }
-
-            .rating-breakdown {
-                max-width: 100%;
-            }
 
             .form-row {
                 flex-direction: column;
@@ -1176,9 +1167,24 @@ if (isset($_SESSION['user_id'])) {
                             <div class="meta-item">
                                 <strong>查看次数：</strong><?php echo $totalViews; ?> 次
                             </div>
-                            <div class="meta-item">
-                                <strong>注册时间：</strong><?php echo date('Y年m月', strtotime($reader['created_at'])); ?>
-                            </div>
+
+                            <!-- 简化的评分信息 -->
+                            <?php if (class_exists('ReviewManager') && $reviewManager->isInstalled() && $reviewStats['total_reviews'] > 0): ?>
+                                <div class="meta-item rating-summary-compact">
+                                    <strong>用户评价：</strong>
+                                    <div class="rating-display-compact">
+                                        <div class="stars-compact">
+                                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                <span class="star-compact <?php echo $i <= round($reviewStats['average_rating']) ? 'filled' : ''; ?>">★</span>
+                                            <?php endfor; ?>
+                                        </div>
+                                        <span class="rating-text-compact">
+                                            <?php echo number_format($reviewStats['average_rating'], 1); ?>
+                                            (<?php echo $reviewStats['total_reviews']; ?>条评价)
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         
                         <?php if (!empty($reader['specialties'])): ?>
@@ -1384,35 +1390,8 @@ if (isset($_SESSION['user_id'])) {
                 </div>
 
                 <!-- 评价系统 -->
-                <?php if ($reviewManager->isInstalled()): ?>
-                    <!-- 评价统计 -->
-                    <div class="review-stats-section">
-                        <h2>⭐ 用户评价</h2>
-                        <div class="review-stats">
-                            <div class="rating-summary">
-                                <div class="average-rating">
-                                    <span class="rating-number"><?php echo number_format($reviewStats['average_rating'], 1); ?></span>
-                                    <div class="stars">
-                                        <?php for ($i = 1; $i <= 5; $i++): ?>
-                                            <span class="star <?php echo $i <= round($reviewStats['average_rating']) ? 'filled' : ''; ?>">★</span>
-                                        <?php endfor; ?>
-                                    </div>
-                                    <div class="total-reviews"><?php echo $reviewStats['total_reviews']; ?> 条评价</div>
-                                </div>
-                                <div class="rating-breakdown">
-                                    <?php for ($i = 5; $i >= 1; $i--): ?>
-                                        <div class="rating-bar">
-                                            <span class="rating-label"><?php echo $i; ?>星</span>
-                                            <div class="bar-container">
-                                                <div class="bar-fill" style="width: <?php echo $reviewStats['total_reviews'] > 0 ? ($reviewStats['rating_' . $i] / $reviewStats['total_reviews'] * 100) : 0; ?>%"></div>
-                                            </div>
-                                            <span class="rating-count"><?php echo $reviewStats['rating_' . $i]; ?></span>
-                                        </div>
-                                    <?php endfor; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <?php if (class_exists('ReviewManager') && $reviewManager->isInstalled()): ?>
+
 
                     <!-- 评价表单 -->
                     <?php if (isset($_SESSION['user_id'])): ?>
