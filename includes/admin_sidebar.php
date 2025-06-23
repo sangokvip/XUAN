@@ -19,10 +19,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/admin/users.php" 
+            <a href="<?php echo SITE_URL; ?>/admin/users.php"
                class="<?php echo $current_page === 'users.php' ? 'active' : ''; ?>">
                 <span class="icon">👥</span>
                 用户管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/tata_coin.php"
+               class="<?php echo in_array($current_page, ['tata_coin.php', 'tata_coin_transactions.php']) ? 'active' : ''; ?>">
+                <span class="icon">💰</span>
+                Tata Coin管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/messages.php"
+               class="<?php echo $current_page === 'messages.php' ? 'active' : ''; ?>">
+                <span class="icon">📢</span>
+                消息管理
             </a>
         </li>
         <li>

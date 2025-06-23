@@ -65,9 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <div class="auth-links">
-                <p>还没有账户？<a href="register.php">立即注册</a></p>
-                <p><a href="reader_login.php">塔罗师登录</a></p>
-                <p><a href="../index.php">返回首页</a></p>
+                <div class="link-group">
+                    <p class="auth-link-item">
+                        还没有账户？<a href="register.php" class="auth-link">立即注册</a>
+                    </p>
+                </div>
+                <div class="link-group">
+                    <a href="reader_login.php" class="auth-secondary-btn">塔罗师登录</a>
+                    <a href="../index.php" class="auth-secondary-btn">返回首页</a>
+                </div>
             </div>
         </div>
     </div>

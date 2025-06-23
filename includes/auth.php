@@ -180,7 +180,21 @@ function registerUser($data) {
             'gender' => $data['gender'],
             'avatar' => $avatar
         ]);
-        
+
+        // 为新用户初始化Tata Coin
+        try {
+            // 检查Tata Coin系统是否已安装
+            $tataCoinExists = $db->fetchOne("SHOW COLUMNS FROM users LIKE 'tata_coin'");
+            if ($tataCoinExists) {
+                require_once __DIR__ . '/TataCoinManager.php';
+                $tataCoinManager = new TataCoinManager();
+                $tataCoinManager->initializeNewUser($userId, 'user');
+            }
+        } catch (Exception $e) {
+            // 如果Tata Coin初始化失败，记录错误但不影响注册
+            error_log("Failed to initialize Tata Coin for user {$userId}: " . $e->getMessage());
+        }
+
         return ['success' => true, 'user_id' => $userId];
     } catch (Exception $e) {
         return ['success' => false, 'errors' => ['注册失败，请稍后重试']];

@@ -23,6 +23,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    elseif ($action === 'edit_user' && $userId) {
+        $fullName = trim($_POST['full_name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $gender = $_POST['gender'] ?? '';
+        $tataCoin = (int)($_POST['tata_coin'] ?? 0);
+
+        if (empty($fullName) || empty($email)) {
+            $error = '姓名和邮箱不能为空';
+        } else {
+            // 检查邮箱是否被其他用户使用
+            $existingUser = $db->fetchOne("SELECT id FROM users WHERE email = ? AND id != ?", [$email, $userId]);
+            if ($existingUser) {
+                $error = '该邮箱已被其他用户使用';
+            } else {
+                $updateData = [
+                    'full_name' => $fullName,
+                    'email' => $email,
+                    'phone' => $phone ?: null,
+                    'gender' => $gender ?: null
+                ];
+
+                // 如果Tata Coin系统存在，更新余额
+                try {
+                    $tataCoinExists = $db->fetchOne("SHOW COLUMNS FROM users LIKE 'tata_coin'");
+                    if ($tataCoinExists) {
+                        $updateData['tata_coin'] = max(0, $tataCoin);
+                    }
+                } catch (Exception $e) {
+                    // 忽略错误
+                }
+
+                $db->update('users', $updateData, 'id = ?', [$userId]);
+                $success = '用户信息已更新';
+            }
+        }
+    }
+
     elseif ($action === 'delete_user' && $userId) {
         // 检查用户是否有查看记录
         $viewCount = $db->fetchOne("SELECT COUNT(*) as count FROM contact_views WHERE user_id = ?", [$userId]);
@@ -111,8 +149,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
-            if ($db->insert('users', $userData)) {
+            $newUserId = $db->insert('users', $userData);
+            if ($newUserId) {
                 $createdCount++;
+
+                // 为新用户初始化Tata Coin
+                try {
+                    // 检查Tata Coin系统是否已安装
+                    $tataCoinExists = $db->fetchOne("SHOW COLUMNS FROM users LIKE 'tata_coin'");
+                    if ($tataCoinExists) {
+                        require_once '../includes/TataCoinManager.php';
+                        $tataCoinManager = new TataCoinManager();
+                        $tataCoinManager->initializeNewUser($newUserId, 'user');
+                    }
+                } catch (Exception $e) {
+                    // 忽略Tata Coin初始化错误
+                }
             }
 
             // 避免时间戳重复
@@ -147,12 +199,22 @@ if ($status === 'active') {
 // 获取用户数据
 $offset = ($page - 1) * ADMIN_ITEMS_PER_PAGE;
 
+// 检查是否有tata_coin字段
+$tataCoinExists = false;
+try {
+    $tataCoinExists = $db->fetchOne("SHOW COLUMNS FROM users LIKE 'tata_coin'");
+} catch (Exception $e) {
+    // 忽略错误
+}
+
+$tataCoinSelect = $tataCoinExists ? ', u.tata_coin' : ', 0 as tata_coin';
+
 $users = $db->fetchAll(
-    "SELECT u.*, 
+    "SELECT u.* {$tataCoinSelect},
             (SELECT COUNT(*) FROM contact_views cv WHERE cv.user_id = u.id) as view_count
-     FROM users u 
-     {$whereClause} 
-     ORDER BY u.created_at DESC 
+     FROM users u
+     {$whereClause}
+     ORDER BY u.created_at DESC
      LIMIT ? OFFSET ?",
     array_merge($params, [ADMIN_ITEMS_PER_PAGE, $offset])
 );
@@ -185,6 +247,15 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
         
         <div class="admin-content">
             <h1>用户管理</h1>
+
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 0.9rem;">
+                <strong>💡 功能说明：</strong>
+                <ul style="margin: 5px 0 0 20px; color: #92400e;">
+                    <li><strong>编辑</strong>：修改用户基本信息和Tata Coin余额</li>
+                    <li><strong>禁用/激活</strong>：禁用后用户无法登录网站，但数据保留；激活后恢复正常使用</li>
+                    <li><strong>删除</strong>：永久删除用户账户（仅限无查看记录的用户）</li>
+                </ul>
+            </div>
             
             <?php if ($error): ?>
                 <div class="alert alert-error"><?php echo h($error); ?></div>
@@ -274,6 +345,9 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                         <th>性别</th>
                                         <th>邮箱</th>
                                         <th>电话</th>
+                                        <?php if ($tataCoinExists): ?>
+                                        <th>Tata Coin</th>
+                                        <?php endif; ?>
                                         <th>查看次数</th>
                                         <th>状态</th>
                                         <th>注册时间</th>
@@ -303,6 +377,11 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                             </td>
                                             <td><?php echo h($user['email']); ?></td>
                                             <td><?php echo h($user['phone'] ?? '-'); ?></td>
+                                            <?php if ($tataCoinExists): ?>
+                                            <td>
+                                                <span class="tata-coin-amount"><?php echo number_format($user['tata_coin']); ?></span>
+                                            </td>
+                                            <?php endif; ?>
                                             <td><?php echo h($user['view_count']); ?></td>
                                             <td>
                                                 <?php if ($user['is_active']): ?>
@@ -314,19 +393,24 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                             <td><?php echo date('Y-m-d', strtotime($user['created_at'])); ?></td>
                                             <td>
                                                 <div class="reader-actions">
+                                                    <button type="button" class="btn btn-primary btn-sm"
+                                                            onclick="editUser(<?php echo $user['id']; ?>, '<?php echo addslashes($user['full_name']); ?>', '<?php echo addslashes($user['email']); ?>', '<?php echo addslashes($user['phone'] ?? ''); ?>', '<?php echo $user['gender'] ?? ''; ?>', <?php echo $user['tata_coin']; ?>)">
+                                                        编辑
+                                                    </button>
+
                                                     <form method="POST" style="display: inline;">
                                                         <input type="hidden" name="action" value="toggle_active">
                                                         <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                                        <button type="submit" class="btn <?php echo $user['is_active'] ? 'btn-secondary' : 'btn-primary'; ?>">
+                                                        <button type="submit" class="btn <?php echo $user['is_active'] ? 'btn-secondary' : 'btn-primary'; ?> btn-sm">
                                                             <?php echo $user['is_active'] ? '禁用' : '激活'; ?>
                                                         </button>
                                                     </form>
-                                                    
+
                                                     <?php if ($user['view_count'] == 0): ?>
                                                         <form method="POST" style="display: inline;">
                                                             <input type="hidden" name="action" value="delete_user">
                                                             <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
-                                                            <button type="submit" class="btn btn-secondary" 
+                                                            <button type="submit" class="btn btn-secondary btn-sm"
                                                                     onclick="return confirm('确定要删除此用户吗？')">
                                                                 删除
                                                             </button>
@@ -374,6 +458,59 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
         </div>
     </div>
 
+    <!-- 编辑用户模态框 -->
+    <div id="editUserModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑用户</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form method="POST" id="editUserForm">
+                <input type="hidden" name="action" value="edit_user">
+                <input type="hidden" name="user_id" id="edit_user_id">
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit_full_name">姓名 *</label>
+                        <input type="text" id="edit_full_name" name="full_name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_email">邮箱 *</label>
+                        <input type="email" id="edit_email" name="email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_phone">电话</label>
+                        <input type="tel" id="edit_phone" name="phone">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit_gender">性别</label>
+                        <select id="edit_gender" name="gender">
+                            <option value="">请选择</option>
+                            <option value="male">男</option>
+                            <option value="female">女</option>
+                        </select>
+                    </div>
+
+                    <?php if ($tataCoinExists): ?>
+                    <div class="form-group">
+                        <label for="edit_tata_coin">Tata Coin余额</label>
+                        <input type="number" id="edit_tata_coin" name="tata_coin" min="0" step="1">
+                        <small style="color: #666;">直接修改用户的Tata Coin余额</small>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <style>
         .gender-badge {
             display: inline-block;
@@ -395,6 +532,74 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
             background-color: #fce4ec;
             color: #c2185b;
             border: 1px solid #f8bbd9;
+        }
+
+        .tata-coin-amount {
+            color: #f59e0b;
+            font-weight: 600;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.8rem;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+
+        .modal-footer .btn {
+            margin-left: 10px;
         }
     </style>
 
@@ -435,6 +640,41 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                 hiddenInput.value = checkbox.value;
                 this.appendChild(hiddenInput);
             });
+        });
+
+        // 编辑用户函数
+        function editUser(id, fullName, email, phone, gender, tataCoin) {
+            document.getElementById('edit_user_id').value = id;
+            document.getElementById('edit_full_name').value = fullName;
+            document.getElementById('edit_email').value = email;
+            document.getElementById('edit_phone').value = phone;
+            document.getElementById('edit_gender').value = gender;
+
+            const tataCoinField = document.getElementById('edit_tata_coin');
+            if (tataCoinField) {
+                tataCoinField.value = tataCoin;
+            }
+
+            document.getElementById('editUserModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editUserModal').style.display = 'none';
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('editUserModal');
+            if (event.target == modal) {
+                closeEditModal();
+            }
+        }
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeEditModal();
+            }
         });
     </script>
 </body>

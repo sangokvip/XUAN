@@ -550,6 +550,7 @@ body {
     transform: rotate(45deg);
 }
 
+.user-dropdown.active .dropdown-menu,
 .user-dropdown:hover .dropdown-menu {
     display: block;
 }
@@ -572,6 +573,73 @@ body {
 .dropdown-menu a:hover {
     background: rgba(212, 175, 55, 0.1);
     color: #d4af37;
+}
+
+/* 用户名点击样式 */
+.user-name {
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.user-name:hover {
+    color: #d4af37;
+}
+
+/* 下拉菜单动画 */
+.dropdown-menu {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+
+.user-dropdown.active .dropdown-menu {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* 未读消息徽章 */
+.unread-messages-badge {
+    position: absolute;
+    top: -8px;
+    right: 20px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    min-width: 16px;
+    text-align: center;
+    line-height: 1.2;
+    z-index: 10;
+    animation: pulse 2s infinite;
+}
+
+.unread-messages-badge:hover {
+    background: #dc2626;
+    color: white;
+    text-decoration: none;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* 移动端用户名样式 */
+.mobile-user-name {
+    color: #d4af37 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    transition: color 0.3s ease;
+}
+
+.mobile-user-name:hover {
+    color: #f4d03f !important;
 }
 
 /* 主要内容区域 */
@@ -1347,23 +1415,63 @@ main {
 
 .auth-links {
     text-align: center;
-    margin-top: 25px;
+    margin-top: 30px;
     padding-top: 25px;
     border-top: 1px solid #eee;
 }
 
-.auth-links p {
-    margin-bottom: 10px;
+.link-group {
+    margin: 20px 0;
 }
 
-.auth-links a {
+.auth-link-item {
+    margin: 15px 0;
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.auth-link {
     color: #d4af37;
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
+    margin-left: 8px;
+    transition: all 0.3s ease;
 }
 
-.auth-links a:hover {
+.auth-link:hover {
+    color: #b8941f;
     text-decoration: underline;
+}
+
+.auth-secondary-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    margin: 8px 10px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+}
+
+.auth-secondary-btn:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    color: white;
+    text-decoration: none;
+}
+
+@media (max-width: 480px) {
+    .auth-secondary-btn {
+        display: block;
+        margin: 8px 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
 }
 
 /* 搜索区域 */

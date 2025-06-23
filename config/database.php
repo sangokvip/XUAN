@@ -118,5 +118,42 @@ class Database {
         $sql = "DELETE FROM {$table} WHERE {$where}";
         return $this->query($sql, $params);
     }
+
+    /**
+     * 开始事务
+     */
+    public function beginTransaction() {
+        if (!$this->pdo->inTransaction()) {
+            return $this->pdo->beginTransaction();
+        }
+        return true;
+    }
+
+    /**
+     * 提交事务
+     */
+    public function commit() {
+        if ($this->pdo->inTransaction()) {
+            return $this->pdo->commit();
+        }
+        return true;
+    }
+
+    /**
+     * 回滚事务
+     */
+    public function rollback() {
+        if ($this->pdo->inTransaction()) {
+            return $this->pdo->rollback();
+        }
+        return true;
+    }
+
+    /**
+     * 检查是否在事务中
+     */
+    public function inTransaction() {
+        return $this->pdo->inTransaction();
+    }
 }
 ?>

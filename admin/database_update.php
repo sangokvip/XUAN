@@ -111,6 +111,84 @@ $availableUpdates = [
             END"
         ],
         'check_sql' => "SELECT COUNT(*) as count FROM readers WHERE specialties LIKE '%塔罗%' OR specialties LIKE '%疗愈%' OR specialties LIKE '%指导%'"
+    ],
+    'add_tata_coin_system' => [
+        'name' => '添加Tata Coin系统',
+        'description' => '为用户和塔罗师表添加tata_coin字段，创建交易记录表和浏览记录表',
+        'sql' => [
+            "ALTER TABLE users ADD COLUMN tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，默认0' AFTER avatar",
+            "ALTER TABLE readers ADD COLUMN tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，塔罗师默认0' AFTER view_count",
+            "CREATE TABLE IF NOT EXISTS tata_coin_transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL COMMENT '用户ID',
+                user_type ENUM('user', 'reader') NOT NULL COMMENT '用户类型：user-普通用户，reader-塔罗师',
+                transaction_type ENUM('earn', 'spend', 'admin_add', 'admin_subtract', 'transfer') NOT NULL COMMENT '交易类型',
+                amount INT NOT NULL COMMENT '金额（正数为收入，负数为支出）',
+                balance_after INT NOT NULL COMMENT '交易后余额',
+                description VARCHAR(255) NOT NULL COMMENT '交易描述',
+                related_user_id INT DEFAULT NULL COMMENT '关联用户ID（如查看塔罗师时的塔罗师ID）',
+                related_user_type ENUM('user', 'reader') DEFAULT NULL COMMENT '关联用户类型',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user (user_id, user_type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Tata Coin交易记录表'",
+            "CREATE TABLE IF NOT EXISTS user_browse_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL COMMENT '用户ID',
+                reader_id INT NOT NULL COMMENT '塔罗师ID',
+                browse_type ENUM('free', 'paid') NOT NULL COMMENT '浏览类型：free-免费浏览，paid-付费查看联系方式',
+                cost INT DEFAULT 0 COMMENT '消耗的Tata Coin数量',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_user_id (user_id),
+                INDEX idx_reader_id (reader_id),
+                INDEX idx_created_at (created_at),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (reader_id) REFERENCES readers(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户浏览记录表'",
+            "CREATE TABLE IF NOT EXISTS site_settings (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                setting_key VARCHAR(100) NOT NULL UNIQUE COMMENT '设置键名',
+                setting_value TEXT NOT NULL COMMENT '设置值',
+                description VARCHAR(255) DEFAULT NULL COMMENT '设置描述',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_setting_key (setting_key)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='网站设置表'",
+            "INSERT INTO site_settings (setting_key, setting_value, description) VALUES
+                ('new_user_tata_coin', '100', '新用户注册赠送的Tata Coin数量'),
+                ('featured_reader_cost', '30', '查看推荐塔罗师联系方式的Tata Coin消耗'),
+                ('normal_reader_cost', '10', '查看普通塔罗师联系方式的Tata Coin消耗'),
+                ('reader_commission_rate', '50', '塔罗师从用户付费中获得的分成比例（百分比）')
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)"
+        ],
+        'check_sql' => "SHOW COLUMNS FROM users LIKE 'tata_coin'"
+    ],
+    'add_message_system' => [
+        'name' => '添加消息通知系统',
+        'description' => '创建消息表和消息阅读记录表，用于管理员向用户和塔罗师发送通知',
+        'sql' => [
+            "CREATE TABLE IF NOT EXISTS admin_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL COMMENT '消息标题',
+                content TEXT NOT NULL COMMENT '消息内容',
+                target_type ENUM('user', 'reader', 'all') NOT NULL COMMENT '目标类型：user-普通用户，reader-塔罗师，all-所有人',
+                created_by INT NOT NULL COMMENT '创建者ID（管理员）',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_target_type (target_type),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员消息表'",
+            "CREATE TABLE IF NOT EXISTS message_reads (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                message_id INT NOT NULL COMMENT '消息ID',
+                user_id INT NOT NULL COMMENT '用户ID',
+                user_type ENUM('user', 'reader') NOT NULL COMMENT '用户类型',
+                read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_message_user (message_id, user_id, user_type),
+                INDEX idx_user (user_id, user_type),
+                FOREIGN KEY (message_id) REFERENCES admin_messages(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息阅读记录表'"
+        ],
+        'check_sql' => "SHOW TABLES LIKE 'admin_messages'"
     ]
 ];
 

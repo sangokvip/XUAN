@@ -26,6 +26,33 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
+            <a href="<?php echo SITE_URL; ?>/reader/messages.php"
+               class="<?php echo $current_page === 'messages.php' ? 'active' : ''; ?>">
+                <span class="icon">📢</span>
+                消息通知
+                <?php
+                // 显示未读消息数量
+                if (isset($messageManager) && $messageManager->isInstalled()) {
+                    try {
+                        $unreadCount = $messageManager->getUnreadCount($_SESSION['reader_id'], 'reader');
+                        if ($unreadCount > 0) {
+                            echo '<span class="unread-badge">' . $unreadCount . '</span>';
+                        }
+                    } catch (Exception $e) {
+                        // 忽略错误
+                    }
+                }
+                ?>
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/reader/tata_coin_guide.php"
+               class="<?php echo $current_page === 'tata_coin_guide.php' ? 'active' : ''; ?>">
+                <span class="icon">💰</span>
+                Tata Coin说明
+            </a>
+        </li>
+        <li>
             <a href="<?php echo SITE_URL; ?>/reader/settings.php" 
                class="<?php echo $current_page === 'settings.php' ? 'active' : ''; ?>">
                 <span class="icon">⚙️</span>

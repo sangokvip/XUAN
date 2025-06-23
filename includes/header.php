@@ -47,20 +47,21 @@ if (!defined('SITE_URL')) {
                     <?php if (isLoggedIn()): ?>
                         <?php $currentUser = getUserById($_SESSION['user_id']); ?>
                         <li class="mobile-only mobile-user">
-                            <span class="mobile-user-name"><?php echo h($currentUser['full_name'] ?? $_SESSION['user_name']); ?></span>
+                            <a href="<?php echo SITE_URL; ?>/user/index.php" class="mobile-user-name"><?php echo h($currentUser['full_name'] ?? $_SESSION['user_name']); ?></a>
                         </li>
+                        <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/user/index.php">用户中心</a></li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/user/profile.php">个人资料</a></li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a></li>
                     <?php elseif (isReaderLoggedIn()): ?>
                         <?php $currentReader = getReaderById($_SESSION['reader_id']); ?>
                         <li class="mobile-only mobile-user">
-                            <span class="mobile-user-name"><?php echo h($currentReader['full_name']); ?></span>
+                            <a href="<?php echo SITE_URL; ?>/reader/dashboard.php" class="mobile-user-name"><?php echo h($currentReader['full_name']); ?></a>
                         </li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/reader/dashboard.php">占卜师后台</a></li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a></li>
                     <?php elseif (isAdminLoggedIn()): ?>
                         <li class="mobile-only mobile-user">
-                            <span class="mobile-user-name">管理员</span>
+                            <a href="<?php echo SITE_URL; ?>/admin/dashboard.php" class="mobile-user-name">管理员</a>
                         </li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/admin/dashboard.php">管理后台</a></li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a></li>
@@ -77,12 +78,28 @@ if (!defined('SITE_URL')) {
                     <?php
                     $currentUser = getUserById($_SESSION['user_id']);
                     ?>
-                    <div class="user-dropdown">
-                        <button class="user-toggle">
+                    <div class="user-dropdown" id="userDropdown">
+                        <button class="user-toggle" data-user-center="<?php echo SITE_URL; ?>/user/index.php">
                             <span class="user-name"><?php echo h($currentUser['full_name'] ?? $_SESSION['user_name']); ?></span>
+                            <?php
+                            // 显示未读消息数量
+                            try {
+                                require_once __DIR__ . '/MessageManager.php';
+                                $messageManager = new MessageManager();
+                                if ($messageManager->isInstalled()) {
+                                    $unreadCount = $messageManager->getUnreadCount($_SESSION['user_id'], 'user');
+                                    if ($unreadCount > 0) {
+                                        echo '<a href="' . SITE_URL . '/user/messages.php" class="unread-messages-badge" title="' . $unreadCount . '条未读消息">' . $unreadCount . '</a>';
+                                    }
+                                }
+                            } catch (Exception $e) {
+                                // 忽略错误
+                            }
+                            ?>
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="dropdown-menu">
+                        <div class="dropdown-menu" id="userDropdownMenu">
+                            <a href="<?php echo SITE_URL; ?>/user/index.php">用户中心</a>
                             <a href="<?php echo SITE_URL; ?>/user/profile.php">个人资料</a>
                             <a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a>
                         </div>
@@ -91,23 +108,38 @@ if (!defined('SITE_URL')) {
                     <?php
                     $currentReader = getReaderById($_SESSION['reader_id']);
                     ?>
-                    <div class="user-dropdown">
-                        <button class="user-toggle">
+                    <div class="user-dropdown" id="readerDropdown">
+                        <button class="user-toggle" data-user-center="<?php echo SITE_URL; ?>/reader/dashboard.php">
                             <span class="user-name"><?php echo h($currentReader['full_name']); ?></span>
+                            <?php
+                            // 显示未读消息数量
+                            try {
+                                require_once __DIR__ . '/MessageManager.php';
+                                $messageManager = new MessageManager();
+                                if ($messageManager->isInstalled()) {
+                                    $unreadCount = $messageManager->getUnreadCount($_SESSION['reader_id'], 'reader');
+                                    if ($unreadCount > 0) {
+                                        echo '<a href="' . SITE_URL . '/reader/messages.php" class="unread-messages-badge" title="' . $unreadCount . '条未读消息">' . $unreadCount . '</a>';
+                                    }
+                                }
+                            } catch (Exception $e) {
+                                // 忽略错误
+                            }
+                            ?>
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="dropdown-menu">
+                        <div class="dropdown-menu" id="readerDropdownMenu">
                             <a href="<?php echo SITE_URL; ?>/reader/dashboard.php">占卜师后台</a>
                             <a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a>
                         </div>
                     </div>
                 <?php elseif (isAdminLoggedIn()): ?>
-                    <div class="user-dropdown">
-                        <button class="user-toggle">
+                    <div class="user-dropdown" id="adminDropdown">
+                        <button class="user-toggle" data-user-center="<?php echo SITE_URL; ?>/admin/dashboard.php">
                             <span class="user-name">管理员</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
-                        <div class="dropdown-menu">
+                        <div class="dropdown-menu" id="adminDropdownMenu">
                             <a href="<?php echo SITE_URL; ?>/admin/dashboard.php">管理后台</a>
                             <a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a>
                         </div>
@@ -181,12 +213,97 @@ function toggleSearchBox() {
     }
 }
 
+// 用户下拉菜单控制 - 悬停显示，3秒延迟消失
+let dropdownHideTimer = null;
+
+function showUserDropdown(dropdown) {
+    // 清除之前的隐藏定时器
+    if (dropdownHideTimer) {
+        clearTimeout(dropdownHideTimer);
+        dropdownHideTimer = null;
+    }
+
+    // 关闭其他下拉菜单
+    closeOtherDropdowns(dropdown);
+
+    // 显示当前下拉菜单
+    const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+    if (dropdownMenu) {
+        dropdownMenu.style.display = 'block';
+        dropdown.classList.add('active');
+    }
+}
+
+function hideUserDropdown(dropdown) {
+    // 设置3秒延迟隐藏
+    dropdownHideTimer = setTimeout(() => {
+        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+        if (dropdownMenu) {
+            dropdownMenu.style.display = 'none';
+            dropdown.classList.remove('active');
+        }
+        dropdownHideTimer = null;
+    }, 3000); // 3秒延迟
+}
+
+function cancelHideDropdown() {
+    // 取消隐藏定时器
+    if (dropdownHideTimer) {
+        clearTimeout(dropdownHideTimer);
+        dropdownHideTimer = null;
+    }
+}
+
+function closeOtherDropdowns(currentDropdown) {
+    const allDropdowns = document.querySelectorAll('.user-dropdown');
+    allDropdowns.forEach(dropdown => {
+        if (dropdown !== currentDropdown) {
+            const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+            if (dropdownMenu) {
+                dropdownMenu.style.display = 'none';
+                dropdown.classList.remove('active');
+            }
+        }
+    });
+
+    // 关闭搜索框
+    const searchDropdown = document.getElementById('searchDropdown');
+    if (searchDropdown) {
+        searchDropdown.style.display = 'none';
+    }
+}
+
+function closeAllDropdowns() {
+    // 清除定时器
+    if (dropdownHideTimer) {
+        clearTimeout(dropdownHideTimer);
+        dropdownHideTimer = null;
+    }
+
+    const dropdowns = document.querySelectorAll('.dropdown-menu');
+    const userDropdowns = document.querySelectorAll('.user-dropdown');
+
+    dropdowns.forEach(dropdown => {
+        dropdown.style.display = 'none';
+    });
+
+    userDropdowns.forEach(dropdown => {
+        dropdown.classList.remove('active');
+    });
+
+    // 关闭搜索框
+    const searchDropdown = document.getElementById('searchDropdown');
+    if (searchDropdown) {
+        searchDropdown.style.display = 'none';
+    }
+}
+
 // 点击外部关闭菜单和搜索框
 document.addEventListener('click', function(event) {
     const nav = document.getElementById('mainNav');
     const toggle = document.querySelector('.mobile-menu-toggle');
     const searchContainer = document.querySelector('.search-icon-container');
-    const dropdown = document.getElementById('searchDropdown');
+    const userDropdowns = document.querySelectorAll('.user-dropdown');
 
     // 关闭移动端菜单
     if (!nav.contains(event.target) && !toggle.contains(event.target)) {
@@ -195,7 +312,19 @@ document.addEventListener('click', function(event) {
 
     // 关闭搜索框
     if (searchContainer && !searchContainer.contains(event.target)) {
-        dropdown.style.display = 'none';
+        document.getElementById('searchDropdown').style.display = 'none';
+    }
+
+    // 检查是否点击在任何用户下拉菜单外部
+    let clickedOutside = true;
+    userDropdowns.forEach(dropdown => {
+        if (dropdown.contains(event.target)) {
+            clickedOutside = false;
+        }
+    });
+
+    if (clickedOutside) {
+        closeAllDropdowns();
     }
 });
 
@@ -203,7 +332,7 @@ document.addEventListener('click', function(event) {
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeMobileMenu();
-        document.getElementById('searchDropdown').style.display = 'none';
+        closeAllDropdowns();
     }
 });
 
@@ -221,6 +350,44 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', function() {
             closeMobileMenu();
         });
+    });
+
+    // 初始化用户下拉菜单
+    const userDropdowns = document.querySelectorAll('.user-dropdown');
+    userDropdowns.forEach(dropdown => {
+        const userToggle = dropdown.querySelector('.user-toggle');
+        const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+        const userName = userToggle.querySelector('.user-name');
+
+        if (userToggle && dropdownMenu) {
+            // 鼠标进入用户下拉区域时显示菜单
+            dropdown.addEventListener('mouseenter', function() {
+                showUserDropdown(dropdown);
+            });
+
+            // 鼠标离开用户下拉区域时开始3秒倒计时
+            dropdown.addEventListener('mouseleave', function() {
+                hideUserDropdown(dropdown);
+            });
+
+            // 鼠标重新进入时取消隐藏倒计时
+            dropdown.addEventListener('mouseenter', function() {
+                cancelHideDropdown();
+            });
+        }
+
+        // 添加用户名点击事件
+        if (userName) {
+            userName.style.cursor = 'pointer';
+            userName.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                const userCenter = userToggle.getAttribute('data-user-center');
+                if (userCenter) {
+                    window.location.href = userCenter;
+                }
+            });
+        }
     });
 });
 </script>

@@ -31,13 +31,25 @@ if (!empty($dateTo)) {
 $offset = ($page - 1) * ADMIN_ITEMS_PER_PAGE;
 
 $viewRecords = $db->fetchAll(
-    "SELECT cv.*, u.full_name as user_name, u.email as user_email
-     FROM contact_views cv 
-     LEFT JOIN users u ON cv.user_id = u.id 
-     {$whereClause} 
-     ORDER BY cv.viewed_at DESC 
+    "SELECT cv.*, u.full_name as user_name, u.email as user_email, u.avatar as user_avatar, u.gender as user_gender
+     FROM contact_views cv
+     LEFT JOIN users u ON cv.user_id = u.id
+     {$whereClause}
+     ORDER BY cv.viewed_at DESC
      LIMIT ? OFFSET ?",
     array_merge($params, [ADMIN_ITEMS_PER_PAGE, $offset])
+);
+
+// 获取最近20个查看用户（用于显示头像列表）
+$recentUsers = $db->fetchAll(
+    "SELECT DISTINCT u.id, u.full_name, u.avatar, u.gender, MAX(cv.viewed_at) as last_view
+     FROM contact_views cv
+     LEFT JOIN users u ON cv.user_id = u.id
+     WHERE cv.reader_id = ?
+     GROUP BY u.id, u.full_name, u.avatar, u.gender
+     ORDER BY last_view DESC
+     LIMIT 20",
+    [$readerId]
 );
 
 // 获取总数
@@ -139,10 +151,34 @@ $stats = $db->fetchOne(
                 </div>
             </div>
             
+            <!-- 最近查看用户 -->
+            <?php if (!empty($recentUsers)): ?>
+            <div class="card">
+                <div class="card-header">
+                    <h2>最近查看用户 (最近20位)</h2>
+                </div>
+                <div class="card-body">
+                    <div class="recent-users-grid">
+                        <?php foreach ($recentUsers as $user): ?>
+                            <div class="user-item">
+                                <img src="../<?php echo h($user['avatar'] ?: ($user['gender'] === 'female' ? 'img/nf.jpg' : 'img/nm.jpg')); ?>"
+                                     alt="<?php echo h($user['full_name']); ?>"
+                                     class="user-avatar">
+                                <div class="user-info">
+                                    <div class="user-name"><?php echo h($user['full_name'] ?: '未知用户'); ?></div>
+                                    <div class="last-view"><?php echo date('m-d H:i', strtotime($user['last_view'])); ?></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- 查看记录列表 -->
             <div class="card">
                 <div class="card-header">
-                    <h2>查看记录 (共 <?php echo $total; ?> 条)</h2>
+                    <h2>详细查看记录 (共 <?php echo $total; ?> 条)</h2>
                 </div>
                 <div class="card-body">
                     <?php if (empty($viewRecords)): ?>
@@ -152,18 +188,25 @@ $stats = $db->fetchOne(
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th>用户</th>
+                                        <th>邮箱</th>
                                         <th>查看时间</th>
-                                        <th>用户姓名</th>
-                                        <th>用户邮箱</th>
                                         <th>查看日期</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($viewRecords as $record): ?>
                                         <tr>
-                                            <td><?php echo date('H:i:s', strtotime($record['viewed_at'])); ?></td>
-                                            <td><?php echo h($record['user_name'] ?? '未知用户'); ?></td>
+                                            <td>
+                                                <div class="user-cell">
+                                                    <img src="../<?php echo h($record['user_avatar'] ?: ($record['user_gender'] === 'female' ? 'img/nf.jpg' : 'img/nm.jpg')); ?>"
+                                                         alt="<?php echo h($record['user_name']); ?>"
+                                                         class="table-user-avatar">
+                                                    <span><?php echo h($record['user_name'] ?? '未知用户'); ?></span>
+                                                </div>
+                                            </td>
                                             <td><?php echo h($record['user_email'] ?? '-'); ?></td>
+                                            <td><?php echo date('H:i:s', strtotime($record['viewed_at'])); ?></td>
                                             <td><?php echo date('Y-m-d', strtotime($record['viewed_at'])); ?></td>
                                         </tr>
                                     <?php endforeach; ?>

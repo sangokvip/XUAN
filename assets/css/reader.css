@@ -52,6 +52,33 @@
     display: inline-block;
 }
 
+.sidebar-nav .unread-badge {
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+    font-weight: 600;
+    display: inline-block;
+    min-width: 16px;
+    text-align: center;
+    line-height: 1.2;
+}
+
+.stat-number .unread-indicator {
+    color: #ef4444;
+    font-size: 0.8em;
+    margin-left: 5px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
 /* 统计卡片 */
 .stats-grid {
     display: grid;

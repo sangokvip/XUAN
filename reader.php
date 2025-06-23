@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/config.php';
+require_once 'includes/TataCoinManager.php';
 
 // 获取塔罗师ID
 $readerId = (int)($_GET['id'] ?? 0);
@@ -16,11 +17,17 @@ if (!$reader) {
     redirect('readers.php');
 }
 
+$tataCoinManager = new TataCoinManager();
+
 // 检查用户是否已登录
 $user = null;
 $canViewContact = false;
 $hasViewedContact = false;
 $isAdmin = false;
+$userTataCoinBalance = 0;
+$contactCost = 0;
+$paymentError = '';
+$paymentSuccess = '';
 
 // 检查管理员登录状态
 if (isset($_SESSION['admin_id'])) {
@@ -29,8 +36,19 @@ if (isset($_SESSION['admin_id'])) {
     $hasViewedContact = true; // 管理员默认已查看
 } elseif (isset($_SESSION['user_id'])) {
     $user = getUserById($_SESSION['user_id']);
-    $hasViewedContact = hasViewedContact($_SESSION['user_id'], $readerId);
+    $userTataCoinBalance = $tataCoinManager->getBalance($_SESSION['user_id'], 'user');
     $canViewContact = true;
+
+    // 检查是否已经付费查看过
+    $db = Database::getInstance();
+    $existingRecord = $db->fetchOne(
+        "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid'",
+        [$_SESSION['user_id'], $readerId]
+    );
+    $hasViewedContact = (bool)$existingRecord;
+
+    // 确定查看联系方式的费用
+    $contactCost = $reader['is_featured'] ? 30 : 10; // 推荐塔罗师30，普通塔罗师10
 }
 
 // 处理查看联系方式请求
@@ -39,12 +57,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $c
     if ($isAdmin) {
         // 管理员直接显示联系方式，不记录查看记录
         $showContact = true;
-    } elseif (!$hasViewedContact && isset($_SESSION['user_id'])) {
-        recordContactView($_SESSION['user_id'], $readerId);
-        $hasViewedContact = true;
+    } elseif ($hasViewedContact) {
+        // 已经付费查看过，直接显示
         $showContact = true;
-    } else {
-        $showContact = true;
+    } elseif (isset($_SESSION['user_id'])) {
+        // 需要付费查看
+        try {
+            $result = $tataCoinManager->viewReaderContact($_SESSION['user_id'], $readerId);
+            if ($result['success']) {
+                $hasViewedContact = true;
+                $showContact = true;
+                if (!$result['already_paid']) {
+                    $paymentSuccess = "成功支付 {$result['cost']} 个Tata Coin，塔罗师获得 {$result['reader_earning']} 个Tata Coin分成";
+                    $userTataCoinBalance = $tataCoinManager->getBalance($_SESSION['user_id'], 'user');
+                }
+            }
+        } catch (Exception $e) {
+            $paymentError = $e->getMessage();
+        }
+    }
+}
+
+// 记录免费浏览（如果用户已登录但没有查看联系方式）
+if (isset($_SESSION['user_id']) && !$showContact && !$hasViewedContact) {
+    try {
+        $tataCoinManager->recordFreeBrowse($_SESSION['user_id'], $readerId);
+    } catch (Exception $e) {
+        // 忽略记录失败
     }
 }
 
@@ -356,6 +395,137 @@ $totalViews = $readerData['view_count'] ?? 0;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
+        /* Tata Coin付费界面样式 */
+        .contact-payment-section {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .user-balance-info {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #d1d5db;
+        }
+
+        .balance-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .balance-label {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .balance-amount {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f59e0b;
+        }
+
+        .insufficient-balance {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #fecaca;
+        }
+
+        .payment-info {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid #d1d5db;
+        }
+
+        .payment-info h3 {
+            margin: 0 0 15px 0;
+            color: #1f2937;
+            font-size: 1.3rem;
+        }
+
+        .cost-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .cost-amount {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .cost-type {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .cost-note {
+            font-size: 0.9rem;
+            color: #6b7280;
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .payment-error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .payment-success {
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            color: white;
+        }
+
+        .insufficient-funds {
+            text-align: center;
+            padding: 20px;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            color: #92400e;
+        }
+
+
+
         @media (max-width: 768px) {
             .specialty-tags-detail {
                 gap: 6px;
@@ -364,6 +534,21 @@ $totalViews = $readerData['view_count'] ?? 0;
             .specialty-tag-detail {
                 font-size: 12px;
                 padding: 4px 8px;
+            }
+
+            .contact-payment-section {
+                padding: 20px 15px;
+            }
+
+            .user-balance-info,
+            .payment-info {
+                padding: 15px;
+            }
+
+            .balance-display {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
             }
         }
     </style>
@@ -432,10 +617,12 @@ $totalViews = $readerData['view_count'] ?? 0;
                                         if (!empty($specialtyItem)):
                                             $isSystemTag = in_array($specialtyItem, $systemSpecialties);
                                     ?>
-                                        <span class="specialty-tag-detail <?php echo $isSystemTag ? 'system-tag' : 'custom-tag'; ?>"
-                                              <?php if ($isSystemTag): ?>data-specialty="<?php echo h($specialtyItem); ?>"<?php endif; ?>>
+                                        <a href="tag_readers.php?tag=<?php echo urlencode($specialtyItem); ?>"
+                                           class="specialty-tag-detail <?php echo $isSystemTag ? 'system-tag' : 'custom-tag'; ?>"
+                                           <?php if ($isSystemTag): ?>data-specialty="<?php echo h($specialtyItem); ?>"<?php endif; ?>
+                                           style="text-decoration: none; color: inherit;">
                                             <?php echo h($specialtyItem); ?>
-                                        </span>
+                                        </a>
                                     <?php
                                         endif;
                                     endforeach;
@@ -450,6 +637,8 @@ $totalViews = $readerData['view_count'] ?? 0;
                                 <p><?php echo nl2br(h($reader['description'])); ?></p>
                             </div>
                         <?php endif; ?>
+
+
                     </div>
                 </div>
                 
@@ -466,7 +655,7 @@ $totalViews = $readerData['view_count'] ?? 0;
                 <!-- 联系方式 -->
                 <div class="contact-section">
                     <h2>联系方式</h2>
-                    
+
                     <?php if (!$canViewContact): ?>
                         <div class="login-required">
                             <p>查看塔罗师联系方式需要先登录</p>
@@ -481,11 +670,66 @@ $totalViews = $readerData['view_count'] ?? 0;
                             </p>
                         </div>
                     <?php elseif (!$showContact): ?>
-                        <div class="contact-preview">
-                            <p>点击下方按钮查看 <?php echo h($reader['full_name']); ?> 的联系方式</p>
-                            <form method="POST">
-                                <button type="submit" name="view_contact" class="btn btn-primary">查看联系方式</button>
-                            </form>
+                        <!-- 显示付费提示和用户余额 -->
+                        <div class="contact-payment-section">
+                            <?php if ($paymentError): ?>
+                                <div class="payment-error">
+                                    <p style="color: #ef4444; font-weight: 500; margin-bottom: 15px;">
+                                        ❌ <?php echo h($paymentError); ?>
+                                    </p>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="user-balance-info">
+                                <div class="balance-display">
+                                    <span class="balance-label">💰 我的Tata Coin：</span>
+                                    <span class="balance-amount"><?php echo number_format($userTataCoinBalance); ?> 枚</span>
+                                </div>
+                                <?php if ($userTataCoinBalance < $contactCost): ?>
+                                    <div class="insufficient-balance">
+                                        <p style="color: #ef4444;">余额不足，需要 <?php echo $contactCost; ?> 个Tata Coin</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="contact-preview">
+                                <div class="payment-info">
+                                    <h3>💳 查看联系方式</h3>
+                                    <p>查看 <?php echo h($reader['full_name']); ?> 的联系方式需要消耗：</p>
+                                    <div class="cost-display">
+                                        <span class="cost-amount"><?php echo $contactCost; ?> 个Tata Coin</span>
+                                        <span class="cost-type"><?php echo $reader['is_featured'] ? '(推荐塔罗师)' : '(普通塔罗师)'; ?></span>
+                                    </div>
+
+                                </div>
+
+                                <?php if ($hasViewedContact): ?>
+                                    <form method="POST">
+                                        <button type="submit" name="view_contact" class="btn btn-success">
+                                            ✅ 已付费，查看联系方式
+                                        </button>
+                                    </form>
+                                <?php elseif ($userTataCoinBalance >= $contactCost): ?>
+                                    <form method="POST" onsubmit="return confirmPayment()">
+                                        <button type="submit" name="view_contact" class="btn btn-primary">
+                                            💳 支付 <?php echo $contactCost; ?> Tata Coin 查看
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <div class="insufficient-funds">
+                                        <p>Tata Coin余额不足</p>
+                                        <a href="<?php echo SITE_URL; ?>/user/index.php" class="btn btn-secondary">前往用户中心</a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($paymentSuccess): ?>
+                        <div class="payment-success">
+                            <p style="color: #10b981; font-weight: 500; margin-bottom: 15px;">
+                                ✅ <?php echo h($paymentSuccess); ?>
+                            </p>
                         </div>
                     <?php endif; ?>
 
@@ -610,5 +854,32 @@ $totalViews = $readerData['view_count'] ?? 0;
     </main>
     
     <?php include 'includes/footer.php'; ?>
+
+    <script>
+        function confirmPayment() {
+            const cost = <?php echo $contactCost; ?>;
+            const readerName = "<?php echo addslashes($reader['full_name']); ?>";
+            const balance = <?php echo $userTataCoinBalance; ?>;
+
+            const message = `确认支付 ${cost} 个Tata Coin 查看 ${readerName} 的联系方式吗？\n\n当前余额：${balance} 个Tata Coin\n支付后余额：${balance - cost} 个Tata Coin`;
+
+            return confirm(message);
+        }
+
+        // 页面加载完成后的处理
+        document.addEventListener('DOMContentLoaded', function() {
+            // 如果有支付成功消息，3秒后自动隐藏
+            const successMessage = document.querySelector('.payment-success');
+            if (successMessage) {
+                setTimeout(() => {
+                    successMessage.style.transition = 'opacity 0.5s ease';
+                    successMessage.style.opacity = '0';
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                    }, 500);
+                }, 3000);
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,11 +1,15 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/TataCoinManager.php';
+require_once '../includes/MessageManager.php';
 
 // 检查塔罗师登录
 requireReaderLogin();
 
 $db = Database::getInstance();
+$tataCoinManager = new TataCoinManager();
+$messageManager = new MessageManager();
 $reader = getReaderById($_SESSION['reader_id']);
 
 // 获取统计数据
@@ -25,6 +29,29 @@ $monthlyViews = $db->fetchOne(
     [$_SESSION['reader_id']]
 );
 $stats['monthly_views'] = $monthlyViews['monthly_views'] ?? 0;
+
+// 获取Tata Coin余额和收益
+$tataCoinBalance = 0;
+$totalEarnings = 0;
+try {
+    if ($tataCoinManager->isInstalled()) {
+        $tataCoinBalance = $tataCoinManager->getBalance($_SESSION['reader_id'], 'reader');
+        $earningsData = $tataCoinManager->getReaderEarnings($_SESSION['reader_id']);
+        $totalEarnings = $earningsData['total_earnings'] ?? 0;
+    }
+} catch (Exception $e) {
+    // 忽略错误
+}
+
+// 获取未读消息数量
+$unreadMessageCount = 0;
+try {
+    if ($messageManager->isInstalled()) {
+        $unreadMessageCount = $messageManager->getUnreadCount($_SESSION['reader_id'], 'reader');
+    }
+} catch (Exception $e) {
+    // 忽略错误
+}
 
 // 最近的查看记录
 $recentViews = $db->fetchAll(
@@ -95,21 +122,38 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
                     <div class="stat-number"><?php echo $stats['total_views']; ?></div>
                     <div class="stat-label">总查看次数</div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-number"><?php echo $stats['monthly_views']; ?></div>
                     <div class="stat-label">本月查看次数</div>
                 </div>
-                
+
+                <div class="stat-card">
+                    <div class="stat-number"><?php echo number_format($tataCoinBalance); ?></div>
+                    <div class="stat-label">Tata Coin余额</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-number"><?php echo number_format($totalEarnings); ?></div>
+                    <div class="stat-label">累计收益</div>
+                </div>
+
                 <div class="stat-card">
                     <div class="stat-number"><?php echo round($completenessScore); ?>%</div>
                     <div class="stat-label">资料完整度</div>
                 </div>
-                
+
+                <?php if ($messageManager->isInstalled()): ?>
                 <div class="stat-card">
-                    <div class="stat-number"><?php echo $reader['is_featured'] ? '是' : '否'; ?></div>
-                    <div class="stat-label">首页推荐</div>
+                    <div class="stat-number">
+                        <?php echo $unreadMessageCount; ?>
+                        <?php if ($unreadMessageCount > 0): ?>
+                            <span class="unread-indicator">!</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="stat-label">未读消息</div>
                 </div>
+                <?php endif; ?>
             </div>
             
             <!-- 个人信息概览 -->
