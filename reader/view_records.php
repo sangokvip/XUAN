@@ -82,6 +82,91 @@ $stats = $db->fetchOne(
     <title>查看记录 - 塔罗师后台</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/reader.css">
+    <style>
+        .recent-users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+
+        .user-item:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 12px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .last-view {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+        }
+
+        .table-user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+            border: 2px solid #e5e7eb;
+        }
+
+        @media (max-width: 768px) {
+            .recent-users-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+
+            .user-item {
+                padding: 10px;
+            }
+
+            .user-avatar {
+                width: 40px;
+                height: 40px;
+                margin-right: 8px;
+            }
+
+            .table-user-avatar {
+                width: 30px;
+                height: 30px;
+                margin-right: 8px;
+            }
+        }
+    </style>
 </head>
 <body>
     <?php include '../includes/reader_header.php'; ?>

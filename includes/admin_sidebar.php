@@ -40,7 +40,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/admin/generate_reader_link.php" 
+            <a href="<?php echo SITE_URL; ?>/admin/reviews.php"
+               class="<?php echo $current_page === 'reviews.php' ? 'active' : ''; ?>">
+                <span class="icon">⭐</span>
+                评价管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/generate_reader_link.php"
                class="<?php echo $current_page === 'generate_reader_link.php' ? 'active' : ''; ?>">
                 <span class="icon">🔗</span>
                 注册链接

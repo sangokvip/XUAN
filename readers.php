@@ -50,7 +50,9 @@ $offset = ($page - 1) * READERS_PER_PAGE;
 
 $readers = $db->fetchAll(
     "SELECT r.*,
-            COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count
+            COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count,
+            COALESCE(r.average_rating, 0) as average_rating,
+            COALESCE(r.total_reviews, 0) as total_reviews
      FROM readers r
      {$whereClause}
      ORDER BY r.is_featured DESC, view_count DESC, r.created_at DESC
@@ -204,6 +206,34 @@ $totalPages = ceil($total / READERS_PER_PAGE);
             font-size: 11px !important;
             font-weight: 500 !important;
             white-space: nowrap !important;
+        }
+
+        /* 评分样式 */
+        .reader-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 1px;
+        }
+
+        .rating-stars .star {
+            font-size: 14px;
+            color: #e5e7eb;
+        }
+
+        .rating-stars .star.filled {
+            color: #f59e0b;
+        }
+
+        .rating-text {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
         }
 
         .reader-actions {
@@ -529,6 +559,21 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                                     <h3 class="reader-name"><?php echo h($reader['full_name']); ?></h3>
                                     <span class="reader-experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
                                 </div>
+
+                                <!-- 评分信息 -->
+                                <?php if ($reader['total_reviews'] > 0): ?>
+                                    <div class="reader-rating">
+                                        <div class="rating-stars">
+                                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                <span class="star <?php echo $i <= round($reader['average_rating']) ? 'filled' : ''; ?>">★</span>
+                                            <?php endfor; ?>
+                                        </div>
+                                        <span class="rating-text">
+                                            <?php echo number_format($reader['average_rating'], 1); ?>
+                                            (<?php echo $reader['total_reviews']; ?>条评价)
+                                        </span>
+                                    </div>
+                                <?php endif; ?>
                                 
                                 <?php if (!empty($reader['specialties'])): ?>
                                     <div class="specialties">

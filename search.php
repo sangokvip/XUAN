@@ -2,23 +2,91 @@
 session_start();
 require_once 'config/config.php';
 
+$db = Database::getInstance();
+
+// 获取搜索参数
 $query = trim($_GET['q'] ?? '');
-$results = [];
-$totalResults = 0;
+$page = max(1, (int)($_GET['page'] ?? 1));
+$limit = 12;
+$offset = ($page - 1) * $limit;
+
+$readers = [];
+$totalCount = 0;
+$totalPages = 0;
 
 if (!empty($query)) {
-    $db = Database::getInstance();
-    
+    // 检查是否存在 custom_specialties 字段
+    $hasCustomSpecialties = false;
+    try {
+        $checkField = $db->fetchOne("SHOW COLUMNS FROM readers LIKE 'custom_specialties'");
+        $hasCustomSpecialties = !empty($checkField);
+    } catch (Exception $e) {
+        $hasCustomSpecialties = false;
+    }
+
     // 搜索塔罗师
-    $searchSql = "SELECT * FROM readers 
-                  WHERE is_active = 1 
-                  AND (full_name LIKE ? OR specialties LIKE ? OR description LIKE ?)
-                  ORDER BY is_featured DESC, created_at DESC";
-    
-    $searchParam = '%' . $query . '%';
-    $results = $db->fetchAll($searchSql, [$searchParam, $searchParam, $searchParam]);
-    $totalResults = count($results);
+    $searchTerm = "%{$query}%";
+
+    if ($hasCustomSpecialties) {
+        $readers = $db->fetchAll("
+            SELECT r.*,
+                   (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
+            FROM readers r
+            WHERE r.is_active = 1
+            AND (r.full_name LIKE ?
+                 OR r.specialties LIKE ?
+                 OR r.custom_specialties LIKE ?
+                 OR r.description LIKE ?)
+            ORDER BY
+                CASE WHEN r.full_name LIKE ? THEN 1 ELSE 2 END,
+                r.is_featured DESC,
+                view_count DESC,
+                r.created_at DESC
+            LIMIT ? OFFSET ?
+        ", [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $limit, $offset]);
+
+        // 获取总数
+        $totalCount = $db->fetchOne("
+            SELECT COUNT(*) as count
+            FROM readers r
+            WHERE r.is_active = 1
+            AND (r.full_name LIKE ?
+                 OR r.specialties LIKE ?
+                 OR r.custom_specialties LIKE ?
+                 OR r.description LIKE ?)
+        ", [$searchTerm, $searchTerm, $searchTerm, $searchTerm])['count'];
+    } else {
+        $readers = $db->fetchAll("
+            SELECT r.*,
+                   (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
+            FROM readers r
+            WHERE r.is_active = 1
+            AND (r.full_name LIKE ?
+                 OR r.specialties LIKE ?
+                 OR r.description LIKE ?)
+            ORDER BY
+                CASE WHEN r.full_name LIKE ? THEN 1 ELSE 2 END,
+                r.is_featured DESC,
+                view_count DESC,
+                r.created_at DESC
+            LIMIT ? OFFSET ?
+        ", [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $limit, $offset]);
+
+        // 获取总数
+        $totalCount = $db->fetchOne("
+            SELECT COUNT(*) as count
+            FROM readers r
+            WHERE r.is_active = 1
+            AND (r.full_name LIKE ?
+                 OR r.specialties LIKE ?
+                 OR r.description LIKE ?)
+        ", [$searchTerm, $searchTerm, $searchTerm])['count'];
+    }
+
+    $totalPages = ceil($totalCount / $limit);
 }
+
+$pageTitle = !empty($query) ? "搜索：{$query}" : '搜索塔罗师';
 ?>
 
 <!DOCTYPE html>
@@ -26,233 +94,350 @@ if (!empty($query)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>搜索结果 - <?php echo getSiteName(); ?></title>
+    <title><?php echo h($pageTitle); ?> - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
-    
-    <main>
-        <div class="container">
-            <div class="page-header">
-                <h1>搜索结果</h1>
-                <?php if (!empty($query)): ?>
-                    <p>搜索关键词：<strong><?php echo h($query); ?></strong></p>
-                    <p>找到 <?php echo $totalResults; ?> 个结果</p>
-                <?php endif; ?>
-            </div>
-            
-            <!-- 搜索框 -->
-            <div class="search-section">
-                <form action="search.php" method="GET" class="search-form">
-                    <div class="search-input-group">
-                        <input type="text" name="q" value="<?php echo h($query); ?>" 
-                               placeholder="搜索占卜师姓名、专长或简介..." class="search-input">
-                        <button type="submit" class="btn btn-primary">搜索</button>
-                    </div>
-                </form>
-                
-                <?php if (!empty($query)): ?>
-                    <div class="search-info">
-                        <a href="search.php" class="clear-search">清空搜索</a>
-                    </div>
-                <?php endif; ?>
-            </div>
-            
-            <?php if (empty($query)): ?>
-                <!-- 搜索提示 -->
-                <div class="search-tips">
-                    <h3>搜索建议</h3>
-                    <ul>
-                        <li>输入占卜师的昵称进行搜索</li>
-                        <li>根据专长搜索，如：感情、事业、财运等</li>
-                        <li>搜索关键词，如：塔罗、占卜、咨询等</li>
-                    </ul>
-                </div>
-                
-            <?php elseif (empty($results)): ?>
-                <!-- 无结果 -->
-                <div class="no-results">
-                    <h2>未找到相关结果</h2>
-                    <p>抱歉，没有找到与 "<?php echo h($query); ?>" 相关的占卜师。</p>
-                    <p>建议：</p>
-                    <ul>
-                        <li>检查搜索词的拼写</li>
-                        <li>尝试使用更简单的关键词</li>
-                        <li>浏览所有占卜师：<a href="readers.php">查看全部</a></li>
-                    </ul>
-                </div>
-                
-            <?php else: ?>
-                <!-- 搜索结果 -->
-                <div class="search-results">
-                    <div class="readers-grid">
-                        <?php foreach ($results as $reader): ?>
-                            <div class="reader-card <?php echo $reader['is_featured'] ? 'featured' : ''; ?>">
-                                <?php if ($reader['is_featured']): ?>
-                                    <div class="featured-badge">推荐</div>
-                                <?php endif; ?>
-                                
-                                <div class="reader-photo">
-                                    <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-photo-link">
-                                        <?php if (!empty($reader['photo'])): ?>
-                                            <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
-                                        <?php else: ?>
-                                            <div class="default-photo">
-                                                <i class="icon-user">🔮</i>
-                                            </div>
-                                        <?php endif; ?>
-                                    </a>
-                                </div>
 
-                                <div class="reader-info">
-                                    <h3><?php echo h($reader['full_name']); ?></h3>
-
-                                    <div class="reader-meta">
-                                        <span class="experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
-                                    </div>
-
-                                    <?php if (!empty($reader['specialties'])): ?>
-                                        <div class="specialties">
-                                            <strong>擅长：</strong>
-                                            <div class="specialty-tags">
-                                                <?php
-                                                $specialties = explode('、', $reader['specialties']);
-                                                foreach ($specialties as $specialty):
-                                                    $specialty = trim($specialty);
-                                                    if (!empty($specialty)):
-                                                ?>
-                                                    <a href="readers.php?specialty=<?php echo urlencode($specialty); ?>"
-                                                       class="specialty-tag specialty-<?php echo h($specialty); ?>"><?php echo h($specialty); ?></a>
-                                                <?php
-                                                    endif;
-                                                endforeach;
-                                                ?>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <?php if (!empty($reader['description'])): ?>
-                                        <div class="description">
-                                            <?php
-                                            $description = h($reader['description']);
-                                            $maxLength = 60;
-                                            if (mb_strlen($description) > $maxLength) {
-                                                echo mb_substr($description, 0, $maxLength) . '...';
-                                            } else {
-                                                echo $description;
-                                            }
-                                            ?>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <div class="reader-actions">
-                                        <a href="reader.php?id=<?php echo $reader['id']; ?>" class="btn btn-primary">查看详情</a>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
+    <div class="search-container">
+        <div class="search-header">
+            <h1>🔍 搜索塔罗师</h1>
+            <form method="GET" class="search-form">
+                <input type="text" name="q" value="<?php echo h($query); ?>"
+                       placeholder="输入塔罗师姓名、专长或关键词..."
+                       class="search-input" autofocus>
+                <button type="submit" class="search-btn">搜索</button>
+            </form>
         </div>
-    </main>
+            
+        <?php if (!empty($query)): ?>
+            <div class="search-results-header">
+                <div class="results-count">
+                    找到 <strong><?php echo $totalCount; ?></strong> 位塔罗师
+                    <?php if (!empty($query)): ?>
+                        包含关键词 "<strong><?php echo h($query); ?></strong>"
+                    <?php endif; ?>
+                </div>
+                <a href="readers.php" class="btn-view">浏览所有塔罗师</a>
+            </div>
+
+            <?php if (empty($readers)): ?>
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h3>未找到相关塔罗师</h3>
+                    <p>尝试使用其他关键词搜索，或者<a href="readers.php">浏览所有塔罗师</a></p>
+                </div>
+            <?php else: ?>
+                <div class="readers-grid">
+                    <?php foreach ($readers as $reader): ?>
+                        <div class="reader-card">
+                            <img src="<?php echo h($reader['photo_circle'] ?: ($reader['photo'] ?: 'img/tm.jpg')); ?>"
+                                 alt="<?php echo h($reader['full_name']); ?>"
+                                 class="reader-avatar">
+
+                            <div class="reader-name">
+                                <?php echo h($reader['full_name']); ?>
+                                <?php if ($reader['is_featured']): ?>
+                                    <span style="color: #f59e0b; font-size: 0.8em;">⭐</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="reader-meta">
+                                从业 <?php echo h($reader['experience_years']); ?> 年 |
+                                <?php echo $reader['view_count']; ?> 次查看
+                            </div>
+
+                            <div class="reader-specialties">
+                                <?php
+                                $specialties = array_filter(array_map('trim', explode(',', $reader['specialties'])));
+                                $customSpecialties = [];
+                                if ($hasCustomSpecialties && !empty($reader['custom_specialties'])) {
+                                    $customSpecialties = array_filter(array_map('trim', explode(',', $reader['custom_specialties'])));
+                                }
+                                $allSpecialties = array_merge($specialties, $customSpecialties);
+
+                                foreach (array_slice($allSpecialties, 0, 4) as $specialty):
+                                ?>
+                                    <span class="specialty-tag"><?php echo h($specialty); ?></span>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <a href="reader.php?id=<?php echo $reader['id']; ?>" class="btn-view">
+                                查看详情
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ($totalPages > 1): ?>
+                    <div class="pagination">
+                        <?php if ($page > 1): ?>
+                            <a href="?q=<?php echo urlencode($query); ?>&page=<?php echo $page - 1; ?>">← 上一页</a>
+                        <?php endif; ?>
+
+                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                            <?php if ($i == $page): ?>
+                                <span class="current"><?php echo $i; ?></span>
+                            <?php else: ?>
+                                <a href="?q=<?php echo urlencode($query); ?>&page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+
+                        <?php if ($page < $totalPages): ?>
+                            <a href="?q=<?php echo urlencode($query); ?>&page=<?php echo $page + 1; ?>">下一页 →</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+        <?php else: ?>
+            <div class="empty-state">
+                <div class="empty-state-icon">🔮</div>
+                <h3>开始搜索塔罗师</h3>
+                <p>输入塔罗师姓名、专长或关键词来查找您需要的塔罗师</p>
+                <a href="readers.php" class="btn-view" style="margin-top: 20px;">浏览所有塔罗师</a>
+            </div>
+        <?php endif; ?>
+    </div>
     
     <?php include 'includes/footer.php'; ?>
     
     <style>
-        .search-tips {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 10px;
-            margin: 40px 0;
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            font-family: 'Inter', sans-serif;
         }
-        
-        .search-tips h3 {
-            color: #2c3e50;
+
+        .search-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .search-header h1 {
+            margin: 0 0 20px 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .search-form {
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 15px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+        }
+
+        .search-input:focus {
+            outline: none;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        .search-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 15px 30px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .search-results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        .results-count {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+
+        .readers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .reader-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .reader-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .reader-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 20px;
+            border: 4px solid #f1f5f9;
+        }
+
+        .reader-name {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .reader-meta {
+            color: #6b7280;
+            font-size: 0.9rem;
             margin-bottom: 15px;
         }
-        
-        .search-tips ul {
-            list-style: none;
-            padding: 0;
+
+        .reader-specialties {
+            margin-bottom: 20px;
         }
-        
-        .search-tips li {
-            padding: 8px 0;
-            border-bottom: 1px solid #e9ecef;
+
+        .specialty-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 2px;
+            background: #f1f5f9;
+            color: #374151;
         }
-        
-        .search-tips li:before {
-            content: "💡";
-            margin-right: 10px;
+
+        .btn-view {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
         }
-        
-        .search-results {
+
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #6b7280;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
             margin-top: 40px;
         }
-        
-        .search-info {
-            text-align: center;
-            margin-top: 15px;
-        }
-        
-        .clear-search {
-            color: #d4af37;
+
+        .pagination a,
+        .pagination span {
+            padding: 10px 15px;
+            border-radius: 8px;
             text-decoration: none;
-            font-size: 14px;
-        }
-        
-        .clear-search:hover {
-            text-decoration: underline;
+            font-weight: 500;
+            transition: all 0.3s ease;
         }
 
-        /* 专长标签颜色样式 */
-        .specialty-感情 {
-            background: linear-gradient(135deg, #ff6b6b, #ff8e8e) !important;
-            color: white !important;
-            border-color: #ff6b6b !important;
+        .pagination a {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
         }
 
-        .specialty-桃花 {
-            background: linear-gradient(135deg, #ff69b4, #ff91d4) !important;
-            color: white !important;
-            border-color: #ff69b4 !important;
+        .pagination a:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
 
-        .specialty-财运 {
-            background: linear-gradient(135deg, #d4af37, #ffd700) !important;
-            color: #000 !important;
-            border-color: #d4af37 !important;
+        .pagination .current {
+            background: #667eea;
+            color: white;
+            border: 1px solid #667eea;
         }
 
-        .specialty-事业 {
-            background: linear-gradient(135deg, #28a745, #5cb85c) !important;
-            color: white !important;
-            border-color: #28a745 !important;
-        }
+        @media (max-width: 768px) {
+            .search-container {
+                padding: 20px 15px;
+            }
 
-        .specialty-运势 {
-            background: linear-gradient(135deg, #ff8c00, #ffa500) !important;
-            color: white !important;
-            border-color: #ff8c00 !important;
-        }
+            .search-header {
+                padding: 30px 20px;
+            }
 
-        .specialty-学业 {
-            background: linear-gradient(135deg, #007bff, #4dabf7) !important;
-            color: white !important;
-            border-color: #007bff !important;
-        }
+            .search-header h1 {
+                font-size: 2rem;
+            }
 
-        .specialty-寻物 {
-            background: linear-gradient(135deg, #6f42c1, #8e44ad) !important;
-            color: white !important;
-            border-color: #6f42c1 !important;
-        }
+            .search-form {
+                flex-direction: column;
+                gap: 15px;
+            }
 
-        .specialty-tag:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+            .readers-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .reader-card {
+                padding: 20px;
+            }
+
+            .search-results-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
         }
     </style>
 </body>

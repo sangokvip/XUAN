@@ -153,13 +153,13 @@ if (!defined('SITE_URL')) {
 
                 <!-- 搜索图标 -->
                 <div class="search-icon-container">
-                    <button type="button" class="search-icon-btn" onclick="toggleSearchBox()">🔍</button>
-                    <div class="search-dropdown" id="searchDropdown" style="display: none;">
-                        <form action="<?php echo SITE_URL; ?>/search.php" method="GET" class="search-form">
-                            <input type="text" name="q" placeholder="搜索占卜师..." class="search-input" id="searchInput">
-                            <button type="submit" class="search-submit-btn">搜索</button>
-                        </form>
-                    </div>
+                    <a href="<?php echo SITE_URL; ?>/search.php" class="search-icon-btn" title="搜索塔罗师">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </a>
+
                 </div>
             </div>
         </div>

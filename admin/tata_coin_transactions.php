@@ -309,7 +309,7 @@ $pageTitle = 'Tata Coin交易记录';
     </style>
 </head>
 <body>
-    <?php include 'includes/admin_header.php'; ?>
+    <?php include '../includes/admin_header.php'; ?>
     
     <div class="transactions-container">
         <div class="page-header">
@@ -479,6 +479,6 @@ $pageTitle = 'Tata Coin交易记录';
         </div>
     </div>
     
-    <?php include 'includes/admin_footer.php'; ?>
+    <?php include '../includes/admin_footer.php'; ?>
 </body>
 </html>

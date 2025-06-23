@@ -53,7 +53,14 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/reader/settings.php" 
+            <a href="<?php echo SITE_URL; ?>/reader/invitation.php"
+               class="<?php echo $current_page === 'invitation.php' ? 'active' : ''; ?>">
+                <span class="icon">🎯</span>
+                邀请管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/reader/settings.php"
                class="<?php echo $current_page === 'settings.php' ? 'active' : ''; ?>">
                 <span class="icon">⚙️</span>
                 账户设置

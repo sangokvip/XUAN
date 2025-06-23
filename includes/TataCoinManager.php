@@ -207,6 +207,18 @@ class TataCoinManager {
             // 记录塔罗师收益
             if ($readerEarning > 0) {
                 $this->recordTransaction($readerId, 'reader', 'earn', $readerEarning, $readerNewBalance, "用户查看联系方式分成", $userId, 'user');
+
+                // 处理塔罗师收益的邀请返点
+                try {
+                    require_once __DIR__ . '/InvitationManager.php';
+                    $invitationManager = new InvitationManager();
+                    if ($invitationManager->isInstalled()) {
+                        $invitationManager->processReaderEarningsCommission($readerId, $readerEarning);
+                    }
+                } catch (Exception $e) {
+                    // 邀请返点失败不影响主流程
+                    error_log("Reader earnings commission failed: " . $e->getMessage());
+                }
             }
 
             // 记录浏览历史

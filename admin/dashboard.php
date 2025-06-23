@@ -58,12 +58,11 @@ $recentReaders = $db->fetchAll(
 
 // 最活跃的塔罗师（按查看次数）
 $popularReaders = $db->fetchAll(
-    "SELECT r.full_name, r.email, COUNT(cv.id) as view_count 
-     FROM readers r 
-     LEFT JOIN contact_views cv ON r.id = cv.reader_id 
-     WHERE r.is_active = 1 
-     GROUP BY r.id 
-     ORDER BY view_count DESC 
+    "SELECT r.full_name, r.email,
+            COALESCE(r.view_count, (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id)) as view_count
+     FROM readers r
+     WHERE r.is_active = 1
+     ORDER BY view_count DESC
      LIMIT 5"
 );
 ?>

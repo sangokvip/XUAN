@@ -41,8 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $featuredCost = (int)($_POST['featured_reader_cost'] ?? 30);
         $normalCost = (int)($_POST['normal_reader_cost'] ?? 10);
         $commissionRate = (int)($_POST['reader_commission_rate'] ?? 50);
-        
-        if ($newUserCoin < 0 || $featuredCost < 0 || $normalCost < 0 || $commissionRate < 0 || $commissionRate > 100) {
+        $invitationCommissionRate = (float)($_POST['invitation_commission_rate'] ?? 5);
+        $readerInvitationCommissionRate = (float)($_POST['reader_invitation_commission_rate'] ?? 20);
+
+        if ($newUserCoin < 0 || $featuredCost < 0 || $normalCost < 0 || $commissionRate < 0 || $commissionRate > 100 || $invitationCommissionRate < 0 || $invitationCommissionRate > 100 || $readerInvitationCommissionRate < 0 || $readerInvitationCommissionRate > 100) {
             $errors[] = '设置值无效';
         } else {
             try {
@@ -50,8 +52,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'featured_reader_cost'", [$featuredCost]);
                 $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'normal_reader_cost'", [$normalCost]);
                 $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'reader_commission_rate'", [$commissionRate]);
-                
+
+                // 更新或插入邀请返点设置
+                $existingInvitationSetting = $db->fetchOne("SELECT * FROM site_settings WHERE setting_key = 'invitation_commission_rate'");
+                if ($existingInvitationSetting) {
+                    $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'invitation_commission_rate'", [$invitationCommissionRate]);
+                } else {
+                    $db->query("INSERT INTO site_settings (setting_key, setting_value, description) VALUES ('invitation_commission_rate', ?, '邀请返点比例（百分比）')", [$invitationCommissionRate]);
+                }
+
+                // 更新或插入塔罗师邀请返点设置
+                $existingReaderInvitationSetting = $db->fetchOne("SELECT * FROM site_settings WHERE setting_key = 'reader_invitation_commission_rate'");
+                if ($existingReaderInvitationSetting) {
+                    $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'reader_invitation_commission_rate'", [$readerInvitationCommissionRate]);
+                } else {
+                    $db->query("INSERT INTO site_settings (setting_key, setting_value, description) VALUES ('reader_invitation_commission_rate', ?, '塔罗师邀请塔罗师返点比例（百分比）')", [$readerInvitationCommissionRate]);
+                }
+
                 $success = 'Tata Coin设置更新成功！';
+
+                // 调试：记录更新的值
+                if (isset($_GET['debug'])) {
+                    $success .= " [调试] 邀请返点: {$invitationCommissionRate}, 塔罗师邀请返点: {$readerInvitationCommissionRate}";
+                }
             } catch (Exception $e) {
                 $errors[] = '设置更新失败：' . $e->getMessage();
             }
@@ -61,9 +84,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // 获取当前设置
 $settings = [];
-$settingsData = $db->fetchAll("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('new_user_tata_coin', 'featured_reader_cost', 'normal_reader_cost', 'reader_commission_rate')");
+$settingsData = $db->fetchAll("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('new_user_tata_coin', 'featured_reader_cost', 'normal_reader_cost', 'reader_commission_rate', 'invitation_commission_rate', 'reader_invitation_commission_rate')");
 foreach ($settingsData as $setting) {
-    $settings[$setting['setting_key']] = (int)$setting['setting_value'];
+    // 邀请返点比例可能是小数，其他的是整数
+    if (in_array($setting['setting_key'], ['invitation_commission_rate', 'reader_invitation_commission_rate'])) {
+        $settings[$setting['setting_key']] = (float)$setting['setting_value'];
+    } else {
+        $settings[$setting['setting_key']] = (int)$setting['setting_value'];
+    }
 }
 
 // 获取用户列表（用于余额调整）
@@ -350,6 +378,17 @@ $pageTitle = 'Tata Coin管理';
                 <?php echo h($success); ?>
             </div>
         <?php endif; ?>
+
+        <!-- 调试信息 -->
+        <?php if (isset($_GET['debug'])): ?>
+            <div class="alert" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;">
+                <h4>调试信息：</h4>
+                <p><strong>当前设置：</strong></p>
+                <pre><?php print_r($settings); ?></pre>
+                <p><strong>POST数据：</strong></p>
+                <pre><?php print_r($_POST); ?></pre>
+            </div>
+        <?php endif; ?>
         
         <!-- 统计数据 -->
         <div class="stats-grid">
@@ -371,7 +410,7 @@ $pageTitle = 'Tata Coin管理';
             </div>
             <div class="stat-card">
                 <div class="stat-number"><?php echo number_format($registrationGifts['total_amount'] ?? 0); ?></div>
-                <div class="stat-label">注册系统赠送总额</div>
+                <div class="stat-label">注册系统赠送总额 (<?php echo number_format($registrationGifts['gift_count'] ?? 0); ?>人)</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number"><?php echo number_format($adminGifts['total_amount'] ?? 0); ?></div>
@@ -447,10 +486,24 @@ $pageTitle = 'Tata Coin管理';
                     
                     <div class="form-group">
                         <label for="reader_commission_rate">塔罗师分成比例 (%)</label>
-                        <input type="number" id="reader_commission_rate" name="reader_commission_rate" 
+                        <input type="number" id="reader_commission_rate" name="reader_commission_rate"
                                value="<?php echo $settings['reader_commission_rate'] ?? 50; ?>" min="0" max="100" required>
                     </div>
-                    
+
+                    <div class="form-group">
+                        <label for="invitation_commission_rate">邀请返点比例 (%)</label>
+                        <input type="number" id="invitation_commission_rate" name="invitation_commission_rate"
+                               value="<?php echo $settings['invitation_commission_rate'] ?? 5; ?>" min="0" max="100" step="0.1" required>
+                        <small style="color: #6b7280; font-size: 0.9rem;">被邀请人每次消费时，邀请人获得的返点比例</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reader_invitation_commission_rate">塔罗师邀请返点比例 (%)</label>
+                        <input type="number" id="reader_invitation_commission_rate" name="reader_invitation_commission_rate"
+                               value="<?php echo $settings['reader_invitation_commission_rate'] ?? 20; ?>" min="0" max="100" step="0.1" required>
+                        <small style="color: #6b7280; font-size: 0.9rem;">被邀请塔罗师有收益时，邀请塔罗师获得的返点比例（四舍五入取整数）</small>
+                    </div>
+
                     <button type="submit" class="btn-primary">💾 保存设置</button>
                 </form>
             </div>

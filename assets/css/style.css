@@ -599,35 +599,76 @@ body {
     pointer-events: auto;
 }
 
-/* 未读消息徽章 */
+/* 未读消息徽章 - iPhone风格 */
 .unread-messages-badge {
     position: absolute;
-    top: -8px;
-    right: 20px;
-    background: #ef4444;
+    top: -5px;
+    right: 15px;
+    background: #ff3b30;
     color: white;
-    font-size: 0.7rem;
-    padding: 2px 6px;
+    font-size: 0.75rem;
+    padding: 0 6px;
     border-radius: 10px;
     font-weight: 600;
     text-decoration: none;
-    min-width: 16px;
-    text-align: center;
-    line-height: 1.2;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
     z-index: 10;
-    animation: pulse 2s infinite;
+    box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
+    border: 2px solid white;
+    animation: messageNotification 0.5s ease-out;
 }
 
 .unread-messages-badge:hover {
-    background: #dc2626;
+    background: #d70015;
     color: white;
     text-decoration: none;
+    transform: scale(1.1);
+    transition: all 0.2s ease;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
+/* 消息通知动画 */
+@keyframes messageNotification {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 脉冲动画 */
+.unread-messages-badge::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 12px;
+    background: rgba(255, 59, 48, 0.3);
+    animation: messagePulse 2s infinite;
+    z-index: -1;
+}
+
+@keyframes messagePulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
 }
 
 /* 移动端用户名样式 */

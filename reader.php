@@ -2,6 +2,7 @@
 session_start();
 require_once 'config/config.php';
 require_once 'includes/TataCoinManager.php';
+require_once 'includes/ReviewManager.php';
 
 // 获取塔罗师ID
 $readerId = (int)($_GET['id'] ?? 0);
@@ -68,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $c
                 $hasViewedContact = true;
                 $showContact = true;
                 if (!$result['already_paid']) {
-                    $paymentSuccess = "成功支付 {$result['cost']} 个Tata Coin，塔罗师获得 {$result['reader_earning']} 个Tata Coin分成";
+                    $paymentSuccess = "成功支付 {$result['cost']} 个Tata Coin";
                     $userTataCoinBalance = $tataCoinManager->getBalance($_SESSION['user_id'], 'user');
                 }
             }
@@ -96,6 +97,74 @@ $db->query("UPDATE readers SET view_count = COALESCE(view_count, 0) + 1 WHERE id
 // 获取更新后的查看次数
 $readerData = $db->fetchOne("SELECT view_count FROM readers WHERE id = ?", [$readerId]);
 $totalViews = $readerData['view_count'] ?? 0;
+
+// 初始化评价系统
+$reviewManager = new ReviewManager();
+$reviewError = '';
+$reviewSuccess = '';
+$questionError = '';
+$questionSuccess = '';
+
+// 处理评价提交
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review']) && isset($_SESSION['user_id'])) {
+    try {
+        $rating = (int)($_POST['rating'] ?? 0);
+        $reviewText = trim($_POST['review_text'] ?? '');
+        $isAnonymous = isset($_POST['is_anonymous']);
+
+        $reviewManager->addReview($readerId, $_SESSION['user_id'], $rating, $reviewText, $isAnonymous);
+        $reviewSuccess = '评价提交成功！';
+    } catch (Exception $e) {
+        $reviewError = $e->getMessage();
+    }
+}
+
+// 处理问题提交
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_question']) && isset($_SESSION['user_id'])) {
+    try {
+        $question = trim($_POST['question'] ?? '');
+        $isAnonymous = isset($_POST['question_anonymous']);
+
+        $reviewManager->addQuestion($readerId, $_SESSION['user_id'], $question, $isAnonymous);
+        $questionSuccess = '问题提交成功！';
+    } catch (Exception $e) {
+        $questionError = $e->getMessage();
+    }
+}
+
+// 处理回答提交
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_answer']) && isset($_SESSION['user_id'])) {
+    try {
+        $questionId = (int)($_POST['question_id'] ?? 0);
+        $answer = trim($_POST['answer'] ?? '');
+        $isAnonymous = isset($_POST['answer_anonymous']);
+
+        $reviewManager->addAnswer($questionId, $_SESSION['user_id'], $answer, $isAnonymous);
+        $questionSuccess = '回答提交成功！';
+    } catch (Exception $e) {
+        $questionError = $e->getMessage();
+    }
+}
+
+// 获取评价数据
+$reviewStats = $reviewManager->getReviewStats($readerId);
+$reviews = $reviewManager->getReviews($readerId, 10, 0);
+$questions = $reviewManager->getQuestions($readerId, 5, 0);
+
+// 检查用户权限
+$canReview = false;
+$hasReviewed = false;
+$hasPurchased = false;
+
+if (isset($_SESSION['user_id'])) {
+    $hasPurchased = $reviewManager->hasUserPurchased($_SESSION['user_id'], $readerId);
+    $hasReviewed = $reviewManager->hasUserReviewed($_SESSION['user_id'], $readerId);
+    $canReview = $hasPurchased && !$hasReviewed;
+
+    // 获取用户点赞状态
+    $reviewIds = array_column($reviews, 'id');
+    $userLikes = $reviewManager->getUserLikeStatus($_SESSION['user_id'], $reviewIds);
+}
 ?>
 
 <!DOCTYPE html>
@@ -308,6 +377,513 @@ $totalViews = $readerData['view_count'] ?? 0;
 
             .admin-note {
                 min-width: auto;
+            }
+        }
+
+        /* 评价系统样式 - 优化版 */
+        .review-stats-section,
+        .review-form-section,
+        .reviews-list,
+        .questions-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .review-stats-section h2,
+        .reviews-list h3,
+        .questions-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.3rem;
+            color: #1f2937;
+        }
+
+        .review-form-section h3 {
+            margin: 0 0 15px 0;
+            font-size: 1.2rem;
+            color: #1f2937;
+        }
+
+        /* 评分统计 - 紧凑布局 */
+        .review-stats {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .average-rating {
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .rating-number {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #f59e0b;
+            display: block;
+            line-height: 1;
+        }
+
+        .stars {
+            margin: 8px 0 5px 0;
+        }
+
+        .star {
+            font-size: 1.1rem;
+            color: #e5e7eb;
+        }
+
+        .star.filled {
+            color: #f59e0b;
+        }
+
+        .total-reviews {
+            color: #6b7280;
+            font-size: 0.85rem;
+        }
+
+        .rating-breakdown {
+            max-width: 300px;
+        }
+
+        .rating-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .rating-label {
+            width: 25px;
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 6px;
+            background: #f3f4f6;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: #f59e0b;
+            transition: width 0.3s ease;
+        }
+
+        .rating-count {
+            width: 25px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        /* 评价表单 - 紧凑布局 */
+        .review-form {
+            max-width: 100%;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .rating-input {
+            flex-shrink: 0;
+        }
+
+        .rating-input label {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .star-rating {
+            display: flex;
+            gap: 3px;
+        }
+
+        .star-rating input[type="radio"] {
+            display: none;
+        }
+
+        .star-label {
+            font-size: 1.4rem;
+            color: #e5e7eb;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .star-rating input[type="radio"]:checked ~ .star-label,
+        .star-rating input[type="radio"]:checked + .star-label {
+            color: #f59e0b;
+        }
+
+        .star-rating .star-label:hover,
+        .star-rating input[type="radio"]:hover + .star-label {
+            color: #f59e0b;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        /* 评价列表 - 紧凑布局 */
+        .review-item {
+            border-bottom: 1px solid #f3f4f6;
+            padding: 15px 0;
+        }
+
+        .review-item:last-child {
+            border-bottom: none;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .reviewer-info {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .reviewer-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .reviewer-details {
+            min-width: 0;
+        }
+
+        .reviewer-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+
+        .reviewer-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .purchased-badge {
+            background: #10b981;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .review-rating .star {
+            font-size: 0.85rem;
+        }
+
+        .review-date {
+            color: #6b7280;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .review-content {
+            margin: 8px 0;
+            line-height: 1.5;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .review-actions {
+            margin-top: 8px;
+        }
+
+        .like-btn {
+            background: none;
+            border: 1px solid #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: #6b7280;
+            transition: all 0.3s ease;
+        }
+
+        .like-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .like-btn.liked {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* 问答系统 - 紧凑布局 */
+        .question-form-section {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .question-form textarea {
+            min-height: 60px;
+        }
+
+        .question-item {
+            border-bottom: 1px solid #f3f4f6;
+            padding: 15px 0;
+        }
+
+        .question-item:last-child {
+            border-bottom: none;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .questioner-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.9rem;
+        }
+
+        .question-date,
+        .answer-date {
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+
+        .question-content {
+            margin: 8px 0 12px 0;
+            line-height: 1.5;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .answers-list {
+            margin: 12px 0 12px 15px;
+            border-left: 2px solid #e5e7eb;
+            padding-left: 12px;
+        }
+
+        .answer-item {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f9fafb;
+        }
+
+        .answer-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .answer-header {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .answerer-name {
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.85rem;
+        }
+
+        .answer-content {
+            line-height: 1.5;
+            color: #374151;
+            font-size: 0.85rem;
+        }
+
+        .answer-form {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .answer-form textarea {
+            min-height: 50px;
+            font-size: 0.85rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 5px 12px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .review-notice {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 30px 15px;
+            font-size: 0.9rem;
+        }
+
+        .alert {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .review-stats {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .rating-breakdown {
+                max-width: 100%;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .form-bottom {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .reviewer-info {
+                gap: 8px;
+            }
+
+            .review-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
             }
         }
 
@@ -801,12 +1377,241 @@ $totalViews = $readerData['view_count'] ?? 0;
                             </div>
 
                             <div class="contact-note">
-                                <p><strong>💡 温馨提示：</strong>请通过以上方式联系塔罗师预约服务。建议先了解服务内容和价格再进行预约。</p>
+                                <p><strong>💡 温馨提示：</strong>联系占卜师的时候请务必说明是通过“玄”网站来的，才能获得网站专属最低优惠价。建议先了解服务内容和价格再进行预约。</p>
                             </div>
                         </div>
                     <?php endif; ?>
                 </div>
-                
+
+                <!-- 评价系统 -->
+                <?php if ($reviewManager->isInstalled()): ?>
+                    <!-- 评价统计 -->
+                    <div class="review-stats-section">
+                        <h2>⭐ 用户评价</h2>
+                        <div class="review-stats">
+                            <div class="rating-summary">
+                                <div class="average-rating">
+                                    <span class="rating-number"><?php echo number_format($reviewStats['average_rating'], 1); ?></span>
+                                    <div class="stars">
+                                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                                            <span class="star <?php echo $i <= round($reviewStats['average_rating']) ? 'filled' : ''; ?>">★</span>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <div class="total-reviews"><?php echo $reviewStats['total_reviews']; ?> 条评价</div>
+                                </div>
+                                <div class="rating-breakdown">
+                                    <?php for ($i = 5; $i >= 1; $i--): ?>
+                                        <div class="rating-bar">
+                                            <span class="rating-label"><?php echo $i; ?>星</span>
+                                            <div class="bar-container">
+                                                <div class="bar-fill" style="width: <?php echo $reviewStats['total_reviews'] > 0 ? ($reviewStats['rating_' . $i] / $reviewStats['total_reviews'] * 100) : 0; ?>%"></div>
+                                            </div>
+                                            <span class="rating-count"><?php echo $reviewStats['rating_' . $i]; ?></span>
+                                        </div>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 评价表单 -->
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <?php if ($canReview): ?>
+                            <div class="review-form-section">
+                                <h3>📝 写评价</h3>
+                                <?php if ($reviewError): ?>
+                                    <div class="alert alert-error"><?php echo h($reviewError); ?></div>
+                                <?php endif; ?>
+                                <?php if ($reviewSuccess): ?>
+                                    <div class="alert alert-success"><?php echo h($reviewSuccess); ?></div>
+                                <?php endif; ?>
+
+                                <form method="POST" class="review-form">
+                                    <div class="form-row">
+                                        <div class="rating-input">
+                                            <label>评分</label>
+                                            <div class="star-rating">
+                                                <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                    <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" required>
+                                                    <label for="star<?php echo $i; ?>" class="star-label">★</label>
+                                                <?php endfor; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="review_text">评价内容</label>
+                                        <textarea name="review_text" id="review_text" placeholder="分享您的体验..."></textarea>
+                                    </div>
+
+                                    <div class="form-bottom">
+                                        <div class="checkbox-group">
+                                            <input type="checkbox" name="is_anonymous" id="is_anonymous">
+                                            <label for="is_anonymous">匿名评价</label>
+                                        </div>
+                                        <button type="submit" name="submit_review" class="btn btn-primary">提交评价</button>
+                                    </div>
+                                </form>
+                            </div>
+                        <?php elseif ($hasReviewed): ?>
+                            <div class="review-notice">
+                                <p>✅ 您已经评价过该塔罗师了</p>
+                            </div>
+                        <?php elseif (!$hasPurchased): ?>
+                            <div class="review-notice">
+                                <p>💡 购买服务后可以评价该塔罗师</p>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="review-notice">
+                            <p>💡 <a href="auth/login.php">登录</a> 后可以查看和发表评价</p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- 评价列表 -->
+                    <div class="reviews-list">
+                        <h3>💬 用户评价</h3>
+                        <?php if (empty($reviews)): ?>
+                            <div class="empty-state">
+                                <p>暂无评价，成为第一个评价的用户吧！</p>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($reviews as $review): ?>
+                                <div class="review-item">
+                                    <div class="review-header">
+                                        <div class="reviewer-info">
+                                            <img src="<?php echo h($review['user_avatar'] ?: ($review['is_anonymous'] ? '../img/anonymous.jpg' : '../img/nm.jpg')); ?>"
+                                                 alt="用户头像" class="reviewer-avatar">
+                                            <div class="reviewer-details">
+                                                <div class="reviewer-name"><?php echo h($review['user_name']); ?></div>
+                                                <div class="reviewer-meta">
+                                                    <?php if ($review['is_purchased']): ?>
+                                                        <span class="purchased-badge">已购买</span>
+                                                    <?php endif; ?>
+                                                    <div class="review-rating">
+                                                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                            <span class="star <?php echo $i <= $review['rating'] ? 'filled' : ''; ?>">★</span>
+                                                        <?php endfor; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="review-date"><?php echo date('m-d', strtotime($review['created_at'])); ?></div>
+                                    </div>
+
+                                    <?php if (!empty($review['review_text'])): ?>
+                                        <div class="review-content">
+                                            <?php echo nl2br(h($review['review_text'])); ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="review-actions">
+                                        <?php if (isset($_SESSION['user_id'])): ?>
+                                            <button class="like-btn <?php echo isset($userLikes[$review['id']]) ? 'liked' : ''; ?>"
+                                                    data-review-id="<?php echo $review['id']; ?>">
+                                                👍 <span class="like-count"><?php echo $review['like_count']; ?></span>
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="like-display">👍 <?php echo $review['like_count']; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- 问大家功能 -->
+                    <div class="questions-section">
+                        <h3>❓ 问大家</h3>
+
+                        <!-- 提问表单 -->
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <div class="question-form-section">
+                                <?php if ($questionError): ?>
+                                    <div class="alert alert-error"><?php echo h($questionError); ?></div>
+                                <?php endif; ?>
+                                <?php if ($questionSuccess): ?>
+                                    <div class="alert alert-success"><?php echo h($questionSuccess); ?></div>
+                                <?php endif; ?>
+
+                                <form method="POST" class="question-form">
+                                    <div class="form-group">
+                                        <textarea name="question" placeholder="想了解什么？向大家提问..." required></textarea>
+                                    </div>
+                                    <div class="form-actions">
+                                        <div class="checkbox-group">
+                                            <input type="checkbox" name="question_anonymous" id="question_anonymous">
+                                            <label for="question_anonymous">匿名提问</label>
+                                        </div>
+                                        <button type="submit" name="submit_question" class="btn btn-secondary">提问</button>
+                                    </div>
+                                </form>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- 问题列表 -->
+                        <div class="questions-list">
+                            <?php if (empty($questions)): ?>
+                                <div class="empty-state">
+                                    <p>暂无问题，快来提问吧！</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($questions as $question): ?>
+                                    <div class="question-item">
+                                        <div class="question-header">
+                                            <span class="questioner-name"><?php echo h($question['user_name']); ?></span>
+                                            <span class="question-date"><?php echo date('Y-m-d', strtotime($question['created_at'])); ?></span>
+                                        </div>
+                                        <div class="question-content">
+                                            <?php echo nl2br(h($question['question'])); ?>
+                                        </div>
+
+                                        <!-- 回答列表 -->
+                                        <?php $answers = $reviewManager->getAnswers($question['id']); ?>
+                                        <?php if (!empty($answers)): ?>
+                                            <div class="answers-list">
+                                                <?php foreach ($answers as $answer): ?>
+                                                    <div class="answer-item">
+                                                        <div class="answer-header">
+                                                            <span class="answerer-name"><?php echo h($answer['user_name']); ?></span>
+                                                            <?php if ($answer['is_purchased']): ?>
+                                                                <span class="purchased-badge">已购买</span>
+                                                            <?php endif; ?>
+                                                            <span class="answer-date"><?php echo date('m-d H:i', strtotime($answer['created_at'])); ?></span>
+                                                        </div>
+                                                        <div class="answer-content">
+                                                            <?php echo nl2br(h($answer['answer'])); ?>
+                                                        </div>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <!-- 回答表单 -->
+                                        <?php if (isset($_SESSION['user_id'])): ?>
+                                            <div class="answer-form">
+                                                <form method="POST" class="inline-form">
+                                                    <input type="hidden" name="question_id" value="<?php echo $question['id']; ?>">
+                                                    <div class="form-group">
+                                                        <textarea name="answer" placeholder="回答这个问题..." required></textarea>
+                                                    </div>
+                                                    <div class="form-actions">
+                                                        <div class="checkbox-group">
+                                                            <input type="checkbox" name="answer_anonymous" id="answer_anonymous_<?php echo $question['id']; ?>">
+                                                            <label for="answer_anonymous_<?php echo $question['id']; ?>">匿名回答</label>
+                                                        </div>
+                                                        <button type="submit" name="submit_answer" class="btn btn-small btn-secondary">回答</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
                 <!-- 相关推荐 -->
                 <?php
                 $relatedReaders = $db->fetchAll(
@@ -879,6 +1684,89 @@ $totalViews = $readerData['view_count'] ?? 0;
                     }, 500);
                 }, 3000);
             }
+
+            // 星级评分交互
+            const starInputs = document.querySelectorAll('.star-rating input[type="radio"]');
+            const starLabels = document.querySelectorAll('.star-rating .star-label');
+
+            starLabels.forEach((label, index) => {
+                label.addEventListener('mouseenter', function() {
+                    // 高亮当前星级及之前的星级
+                    for (let i = 0; i <= index; i++) {
+                        starLabels[i].style.color = '#f59e0b';
+                    }
+                    for (let i = index + 1; i < starLabels.length; i++) {
+                        starLabels[i].style.color = '#e5e7eb';
+                    }
+                });
+
+                label.addEventListener('mouseleave', function() {
+                    // 恢复到选中状态
+                    const checkedInput = document.querySelector('.star-rating input[type="radio"]:checked');
+                    if (checkedInput) {
+                        const checkedIndex = Array.from(starInputs).indexOf(checkedInput);
+                        for (let i = 0; i <= checkedIndex; i++) {
+                            starLabels[i].style.color = '#f59e0b';
+                        }
+                        for (let i = checkedIndex + 1; i < starLabels.length; i++) {
+                            starLabels[i].style.color = '#e5e7eb';
+                        }
+                    } else {
+                        starLabels.forEach(label => {
+                            label.style.color = '#e5e7eb';
+                        });
+                    }
+                });
+
+                label.addEventListener('click', function() {
+                    // 更新选中状态的显示
+                    for (let i = 0; i <= index; i++) {
+                        starLabels[i].style.color = '#f59e0b';
+                    }
+                    for (let i = index + 1; i < starLabels.length; i++) {
+                        starLabels[i].style.color = '#e5e7eb';
+                    }
+                });
+            });
+
+            // 点赞功能
+            const likeButtons = document.querySelectorAll('.like-btn');
+            likeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const reviewId = this.dataset.reviewId;
+                    const likeCountSpan = this.querySelector('.like-count');
+                    const currentCount = parseInt(likeCountSpan.textContent);
+
+                    // 发送AJAX请求
+                    fetch('ajax/like_review.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            review_id: reviewId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (data.liked) {
+                                this.classList.add('liked');
+                                likeCountSpan.textContent = currentCount + 1;
+                            } else {
+                                this.classList.remove('liked');
+                                likeCountSpan.textContent = Math.max(0, currentCount - 1);
+                            }
+                        } else {
+                            alert(data.message || '操作失败');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('网络错误，请稍后重试');
+                    });
+                });
+            });
         });
     </script>
 </body>

@@ -15,24 +15,55 @@ $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 12;
 $offset = ($page - 1) * $limit;
 
-// 获取有此标签的塔罗师
-$readers = $db->fetchAll("
-    SELECT r.*, 
-           (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
-    FROM readers r 
-    WHERE r.is_active = 1 
-    AND (r.specialties LIKE ? OR r.custom_specialties LIKE ?)
-    ORDER BY view_count DESC, r.created_at DESC
-    LIMIT ? OFFSET ?
-", ["%{$tag}%", "%{$tag}%", $limit, $offset]);
+// 检查是否存在 custom_specialties 字段
+$hasCustomSpecialties = false;
+try {
+    $checkField = $db->fetchOne("SHOW COLUMNS FROM readers LIKE 'custom_specialties'");
+    $hasCustomSpecialties = !empty($checkField);
+} catch (Exception $e) {
+    $hasCustomSpecialties = false;
+}
 
-// 获取总数
-$totalCount = $db->fetchOne("
-    SELECT COUNT(*) as count 
-    FROM readers r 
-    WHERE r.is_active = 1 
-    AND (r.specialties LIKE ? OR r.custom_specialties LIKE ?)
-", ["%{$tag}%", "%{$tag}%"])['count'];
+// 根据字段存在情况构建查询
+if ($hasCustomSpecialties) {
+    // 获取有此标签的塔罗师（包含自定义专长）
+    $readers = $db->fetchAll("
+        SELECT r.*,
+               (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
+        FROM readers r
+        WHERE r.is_active = 1
+        AND (r.specialties LIKE ? OR r.custom_specialties LIKE ?)
+        ORDER BY view_count DESC, r.created_at DESC
+        LIMIT ? OFFSET ?
+    ", ["%{$tag}%", "%{$tag}%", $limit, $offset]);
+
+    // 获取总数
+    $totalCount = $db->fetchOne("
+        SELECT COUNT(*) as count
+        FROM readers r
+        WHERE r.is_active = 1
+        AND (r.specialties LIKE ? OR r.custom_specialties LIKE ?)
+    ", ["%{$tag}%", "%{$tag}%"])['count'];
+} else {
+    // 获取有此标签的塔罗师（仅系统专长）
+    $readers = $db->fetchAll("
+        SELECT r.*,
+               (SELECT COUNT(*) FROM contact_views cv WHERE cv.reader_id = r.id) as view_count
+        FROM readers r
+        WHERE r.is_active = 1
+        AND r.specialties LIKE ?
+        ORDER BY view_count DESC, r.created_at DESC
+        LIMIT ? OFFSET ?
+    ", ["%{$tag}%", $limit, $offset]);
+
+    // 获取总数
+    $totalCount = $db->fetchOne("
+        SELECT COUNT(*) as count
+        FROM readers r
+        WHERE r.is_active = 1
+        AND r.specialties LIKE ?
+    ", ["%{$tag}%"])['count'];
+}
 
 $totalPages = ceil($totalCount / $limit);
 
@@ -260,9 +291,12 @@ $pageTitle = "标签：{$tag} - 塔罗师";
                         <div class="reader-specialties">
                             <?php
                             $specialties = array_filter(array_map('trim', explode(',', $reader['specialties'])));
-                            $customSpecialties = array_filter(array_map('trim', explode(',', $reader['custom_specialties'] ?? '')));
+                            $customSpecialties = [];
+                            if ($hasCustomSpecialties && !empty($reader['custom_specialties'])) {
+                                $customSpecialties = array_filter(array_map('trim', explode(',', $reader['custom_specialties'])));
+                            }
                             $allSpecialties = array_merge($specialties, $customSpecialties);
-                            
+
                             foreach ($allSpecialties as $specialty):
                                 $isCurrentTag = (trim($specialty) === $tag);
                             ?>
