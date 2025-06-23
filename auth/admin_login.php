@@ -5,6 +5,11 @@ require_once '../config/config.php';
 $error = '';
 $success = '';
 
+// 检查URL参数中的消息
+if (isset($_GET['message'])) {
+    $success = $_GET['message'];
+}
+
 // 如果已登录，重定向到管理后台
 if (isAdminLoggedIn()) {
     redirect('../admin/dashboard.php');

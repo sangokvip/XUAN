@@ -146,6 +146,8 @@ class ImageCropper {
         document.body.style.overflow = '';
         if (this.reject) {
             this.reject('cancelled');
+            this.reject = null;
+            this.resolve = null;
         }
     }
     
@@ -275,9 +277,12 @@ class ImageCropper {
         
         // 转换为Blob
         finalCanvas.toBlob((blob) => {
-            this.hide();
+            this.modal.style.display = 'none';
+            document.body.style.overflow = '';
             if (this.resolve) {
                 this.resolve(blob);
+                this.resolve = null;
+                this.reject = null;
             }
         }, 'image/jpeg', this.options.quality);
     }

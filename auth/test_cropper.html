@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片剪裁工具测试</title>
+    <link rel="stylesheet" href="../assets/css/image-cropper.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .preview-area {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .preview-item {
+            text-align: center;
+        }
+        .preview-item img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+        .preview-item.circle img {
+            border-radius: 50%;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>图片剪裁工具测试</h1>
+        
+        <div class="upload-area">
+            <input type="file" id="photo" accept="image/*">
+            <p>选择一张图片进行测试</p>
+        </div>
+        
+        <div class="preview-area" id="preview-area" style="display: none;">
+            <div class="preview-item">
+                <img id="original-preview" src="" alt="原始图片">
+                <p>原始图片</p>
+            </div>
+            <div class="preview-item circle">
+                <img id="circle-preview" src="" alt="圆形头像">
+                <p>圆形头像</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="crop-btn" class="btn" style="display: none;">重新剪裁</button>
+        </div>
+        
+        <div class="log" id="log">
+            <div>等待操作...</div>
+        </div>
+    </div>
+
+    <script src="../assets/js/image-cropper.js"></script>
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${time}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('页面加载完成');
+            
+            // 检查图片剪裁工具
+            setTimeout(() => {
+                if (window.imageCropper) {
+                    addLog('✅ 图片剪裁工具已加载');
+                } else {
+                    addLog('❌ 图片剪裁工具未加载');
+                }
+            }, 500);
+            
+            const photoInput = document.getElementById('photo');
+            const originalPreview = document.getElementById('original-preview');
+            const circlePreview = document.getElementById('circle-preview');
+            const previewArea = document.getElementById('preview-area');
+            const cropBtn = document.getElementById('crop-btn');
+            
+            let currentFile = null;
+            
+            photoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                addLog(`选择文件: ${file.name} (${file.type}, ${(file.size/1024/1024).toFixed(2)}MB)`);
+                currentFile = file;
+                
+                // 显示原始图片预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    originalPreview.src = e.target.result;
+                    previewArea.style.display = 'flex';
+                    addLog('原始图片预览已显示');
+                    
+                    // 自动开始剪裁
+                    setTimeout(() => {
+                        cropPhoto(file);
+                    }, 100);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            cropBtn.addEventListener('click', function() {
+                if (currentFile) {
+                    cropPhoto(currentFile);
+                }
+            });
+            
+            function cropPhoto(file) {
+                addLog('开始剪裁图片...');
+                
+                if (!window.imageCropper) {
+                    addLog('❌ 图片剪裁工具未加载');
+                    alert('图片剪裁工具未加载');
+                    return;
+                }
+                
+                addLog('调用 imageCropper.show()');
+                
+                window.imageCropper.show(file)
+                    .then(function(blob) {
+                        addLog(`✅ 剪裁完成，blob大小: ${(blob.size/1024).toFixed(2)}KB`);
+                        
+                        // 显示圆形头像预览
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            circlePreview.src = e.target.result;
+                            cropBtn.style.display = 'inline-block';
+                            addLog('✅ 圆形头像预览已显示');
+                        };
+                        reader.readAsDataURL(blob);
+                    })
+                    .catch(function(error) {
+                        if (error === 'cancelled') {
+                            addLog('用户取消了剪裁');
+                        } else {
+                            addLog(`❌ 剪裁失败: ${error}`);
+                            console.error('剪裁失败:', error);
+                        }
+                    });
+            }
+        });
+    </script>
+</body>
+</html>
