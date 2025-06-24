@@ -35,14 +35,6 @@ if (!defined('SITE_URL')) {
                     <!-- 移动端专用菜单项 -->
                     <li class="mobile-only mobile-divider"></li>
 
-                    <!-- 搜索功能 -->
-                    <li class="mobile-only mobile-search">
-                        <form action="<?php echo SITE_URL; ?>/search.php" method="GET" class="mobile-search-form">
-                            <input type="text" name="q" placeholder="搜索占卜师..." class="mobile-search-input">
-                            <button type="submit" class="mobile-search-btn">搜索</button>
-                        </form>
-                    </li>
-
                     <!-- 用户菜单 -->
                     <?php if (isLoggedIn()): ?>
                         <?php $currentUser = getUserById($_SESSION['user_id']); ?>

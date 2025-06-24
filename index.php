@@ -27,21 +27,18 @@ $featured_readers = getFeaturedReaders();
     <main>
         <!-- 英雄区域 -->
         <section class="hero-section">
-            <div class="hero-background">
-                <div class="hero-overlay"></div>
-                <div class="hero-content">
-                    <div class="container">
-                        <h1 class="hero-title">
-                            To Believe or Not To Believe<br>
-                            This Is A Question
-                        </h1>
-                        <p class="hero-description">
-                            联系经验丰富的占卜师，获得个性化准确解读，<br>
-                            更有详细的玄学课程和魔法产品，提升您的灵性之旅。
-                        </p>
-                        <div class="hero-actions">
-                            <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-explore">Explore</a>
-                        </div>
+            <div class="hero-background"></div>
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <div class="container">
+                    <h1 class="hero-title">
+                        Find Your Perfect Diviner
+                    </h1>
+                    <p class="hero-description">
+                        Connect with experienced diviners for personalized readings and guidance.
+                    </p>
+                    <div class="hero-actions">
+                        <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-explore">Explore Tarot Masters</a>
                     </div>
                 </div>
             </div>
@@ -72,7 +69,7 @@ $featured_readers = getFeaturedReaders();
 
                                 <div class="reader-circle-info">
                                     <h3 class="reader-name"><?php echo htmlspecialchars($reader['full_name']); ?></h3>
-                                    <p class="reader-experience"><?php echo htmlspecialchars($reader['experience_years']); ?> years of experience</p>
+                                    <p class="reader-experience">从业 <?php echo htmlspecialchars($reader['experience_years']); ?> 年</p>
                                 </div>
                             </a>
                         </div>
@@ -81,6 +78,46 @@ $featured_readers = getFeaturedReaders();
 
                 <div class="section-footer">
                     <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-outline">查看更多塔罗师</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- 服务说明区域 -->
+        <section class="services-section">
+            <div class="container">
+                <h2 class="services-title">拨云见日，自此启程</h2>
+                <p class="services-subtitle">严选五星占卜师，启幕专属灵性对话，在星月交辉处，与迷失的自我重逢。</p>
+
+                <div class="services-grid">
+                    <div class="service-item">
+                        <div class="service-icon">
+                            <span class="icon">⭐</span>
+                        </div>
+                        <h3 class="service-title">星选占卜圣手</h3>
+                        <p class="service-description">
+                            此间仅驻留历遍千万签的占卜旅人，与众生评述中淬炼的通幽者
+                        </p>
+                    </div>
+
+                    <div class="service-item">
+                        <div class="service-icon">
+                            <span class="icon">🛡️</span>
+                        </div>
+                        <h3 class="service-title">星辰不言，吾辈不泄</h3>
+                        <p class="service-description">
+                            此间所言，皆封于星匣；天机不泄，因果不昧；凡所占验，尽归尘密     
+                        </p>
+                    </div>
+
+                    <div class="service-item">
+                        <div class="service-icon">
+                            <span class="icon">🎯</span>
+                        </div>
+                        <h3 class="service-title">凡心所向，必有所得</h3>
+                        <p class="service-description">
+                            观星卜卦的方外之士，参透玄机的授业之师，暗藏天机的秘法之物，众生所求，皆有所应
+                        </p>
+                    </div>
                 </div>
             </div>
         </section>

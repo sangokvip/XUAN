@@ -962,6 +962,143 @@ if (isset($_SESSION['user_id'])) {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
+        /* 其他推荐塔罗师部分的标签样式 */
+        .related-readers .specialties {
+            margin-bottom: 15px;
+        }
+
+        .related-readers .specialty-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            margin: 2px;
+            transition: all 0.3s ease;
+        }
+
+        /* 颜色编码标签样式 - 与readers.php保持一致 */
+        .related-readers .specialty-感情 {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+            color: white;
+        }
+
+        .related-readers .specialty-桃花 {
+            background: linear-gradient(135deg, #ff69b4, #ff91d4);
+            color: white;
+        }
+
+        .related-readers .specialty-财运 {
+            background: linear-gradient(135deg, #d4af37, #ffd700);
+            color: #000;
+        }
+
+        .related-readers .specialty-事业 {
+            background: linear-gradient(135deg, #28a745, #5cb85c);
+            color: white;
+        }
+
+        .related-readers .specialty-运势 {
+            background: linear-gradient(135deg, #ff8c00, #ffa500);
+            color: white;
+        }
+
+        .related-readers .specialty-学业 {
+            background: linear-gradient(135deg, #007bff, #4dabf7);
+            color: white;
+        }
+
+        .related-readers .specialty-寻物 {
+            background: linear-gradient(135deg, #6f42c1, #8e44ad);
+            color: white;
+        }
+
+        .related-readers .specialty-tag:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 其他推荐塔罗师头部样式 */
+        .related-readers-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .related-readers-header h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.5rem;
+        }
+
+        /* 换一批按钮样式 */
+        .btn-refresh {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn-refresh:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+
+        .btn-refresh:active {
+            transform: translateY(0);
+        }
+
+        .btn-refresh.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .refresh-icon {
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .btn-refresh.loading .refresh-icon {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* 加载状态样式 */
+        .readers-grid {
+            transition: opacity 0.3s ease;
+        }
+
+        .readers-grid.loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* 塔罗师卡片动画 */
+        .reader-card {
+            transition: all 0.3s ease;
+        }
+
+        .reader-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
         /* Tata Coin付费界面样式 */
         .contact-payment-section {
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
@@ -1101,6 +1238,30 @@ if (isset($_SESSION['user_id'])) {
             .specialty-tag-detail {
                 font-size: 12px;
                 padding: 4px 8px;
+            }
+
+            /* 移动端其他推荐塔罗师标签样式 */
+            .related-readers .specialty-tag {
+                font-size: 10px;
+                padding: 3px 8px;
+                margin: 1px;
+            }
+
+            /* 移动端换一批按钮样式 */
+            .related-readers-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .related-readers-header h2 {
+                font-size: 1.3rem;
+            }
+
+            .btn-refresh {
+                padding: 8px 16px;
+                font-size: 13px;
+                align-self: center;
             }
 
             .contact-payment-section {
@@ -1604,8 +1765,14 @@ if (isset($_SESSION['user_id'])) {
                 
                 <?php if (!empty($relatedReaders)): ?>
                     <div class="related-readers">
-                        <h2>其他推荐塔罗师</h2>
-                        <div class="readers-grid">
+                        <div class="related-readers-header">
+                            <h2>其他推荐塔罗师</h2>
+                            <button id="refreshReaders" class="btn-refresh" onclick="refreshRelatedReaders()">
+                                <span class="refresh-icon">🔄</span>
+                                换一批
+                            </button>
+                        </div>
+                        <div class="readers-grid" id="relatedReadersGrid">
                             <?php foreach ($relatedReaders as $relatedReader): ?>
                                 <div class="reader-card">
                                     <div class="reader-photo">
@@ -1619,12 +1786,29 @@ if (isset($_SESSION['user_id'])) {
                                             <?php endif; ?>
                                         </a>
                                     </div>
-                                    
+
                                     <div class="reader-info">
                                         <h3><?php echo h($relatedReader['full_name']); ?></h3>
                                         <p>从业 <?php echo h($relatedReader['experience_years']); ?> 年</p>
                                         <?php if (!empty($relatedReader['specialties'])): ?>
-                                            <p><?php echo h(mb_substr($relatedReader['specialties'], 0, 30)); ?>...</p>
+                                            <div class="specialties">
+                                                <strong>擅长：</strong>
+                                                <?php
+                                                // 系统提供的标准擅长方向
+                                                $systemSpecialties = ['感情', '学业', '桃花', '财运', '事业', '运势', '寻物'];
+                                                $specialties = explode('、', $relatedReader['specialties']);
+                                                foreach ($specialties as $specialtyItem):
+                                                    $specialtyItem = trim($specialtyItem);
+                                                    // 只显示系统提供的标准标签
+                                                    if (!empty($specialtyItem) && in_array($specialtyItem, $systemSpecialties)):
+                                                ?>
+                                                    <a href="readers.php?specialty=<?php echo urlencode($specialtyItem); ?>"
+                                                       class="specialty-tag specialty-<?php echo h($specialtyItem); ?>"><?php echo h($specialtyItem); ?></a>
+                                                <?php
+                                                    endif;
+                                                endforeach;
+                                                ?>
+                                            </div>
                                         <?php endif; ?>
                                         <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $relatedReader['id']; ?>" class="btn btn-primary">查看详情</a>
                                     </div>
@@ -1747,6 +1931,97 @@ if (isset($_SESSION['user_id'])) {
                 });
             });
         });
+
+        // 换一批推荐塔罗师功能
+        function refreshRelatedReaders() {
+            const refreshBtn = document.getElementById('refreshReaders');
+            const readersGrid = document.getElementById('relatedReadersGrid');
+            const currentReaderId = <?php echo $readerId; ?>;
+
+            console.log('开始刷新塔罗师，当前ID:', currentReaderId);
+
+            // 设置加载状态
+            refreshBtn.classList.add('loading');
+            refreshBtn.disabled = true;
+            readersGrid.classList.add('loading');
+
+            // 发送AJAX请求
+            fetch('./api/get_related_readers.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'reader_id=' + currentReaderId
+            })
+            .then(response => {
+                console.log('响应状态:', response.status);
+                console.log('响应头:', response.headers);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                }
+                return response.text();
+            })
+            .then(text => {
+                console.log('原始响应:', text);
+                try {
+                    const data = JSON.parse(text);
+                    console.log('解析后的数据:', data);
+
+                    if (data.success && data.readers) {
+                        // 更新塔罗师列表
+                        let newHtml = '';
+                        data.readers.forEach(reader => {
+                            newHtml += `
+                                <div class="reader-card">
+                                    <div class="reader-photo">
+                                        <a href="${reader.site_url}/reader.php?id=${reader.id}" class="reader-photo-link">
+                                            ${reader.photo_html}
+                                        </a>
+                                    </div>
+                                    <div class="reader-info">
+                                        <h3>${reader.full_name}</h3>
+                                        <p>从业 ${reader.experience_years} 年</p>
+                                        ${reader.specialty_tags ? `
+                                            <div class="specialties">
+                                                <strong>擅长：</strong>
+                                                ${reader.specialty_tags}
+                                            </div>
+                                        ` : ''}
+                                        <a href="${reader.site_url}/reader.php?id=${reader.id}" class="btn btn-primary">查看详情</a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        // 淡出效果
+                        readersGrid.style.opacity = '0';
+                        setTimeout(() => {
+                            readersGrid.innerHTML = newHtml;
+                            readersGrid.style.opacity = '1';
+                        }, 300);
+                    } else {
+                        console.error('API返回错误:', data);
+                        alert('获取塔罗师失败：' + (data.error || '未知错误'));
+                    }
+                } catch (parseError) {
+                    console.error('JSON解析错误:', parseError);
+                    console.error('原始响应:', text);
+                    alert('服务器响应格式错误，请稍后重试');
+                }
+            })
+            .catch(error => {
+                console.error('请求错误:', error);
+                alert('网络错误：' + error.message);
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                setTimeout(() => {
+                    refreshBtn.classList.remove('loading');
+                    refreshBtn.disabled = false;
+                    readersGrid.classList.remove('loading');
+                }, 500);
+            });
+        }
     </script>
 </body>
 </html>
