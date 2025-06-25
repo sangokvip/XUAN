@@ -4,10 +4,24 @@ require_once '../config/config.php';
 
 $errors = [];
 $success = '';
+$inviteToken = $_GET['invite'] ?? '';
 
 // 如果已登录，重定向到首页
 if (isLoggedIn()) {
     redirect('../index.php');
+}
+
+// 验证邀请码（如果有）
+$invitationValid = false;
+if (!empty($inviteToken)) {
+    require_once '../includes/InvitationManager.php';
+    $invitationManager = new InvitationManager();
+    $invitation = $invitationManager->getInvitationByToken($inviteToken);
+    if ($invitation) {
+        $invitationValid = true;
+    } else {
+        $errors[] = '邀请链接无效或已过期';
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -21,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'gender' => $_POST['gender'] ?? ''
     ];
     
-    $result = registerUser($data);
+    $result = registerUser($data, $inviteToken);
     if ($result['success']) {
         $success = '注册成功！请登录您的账户。';
     } else {

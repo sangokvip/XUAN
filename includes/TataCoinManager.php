@@ -299,11 +299,38 @@ class TataCoinManager {
      * 记录交易
      */
     private function recordTransaction($userId, $userType, $transactionType, $amount, $balanceAfter, $description, $relatedUserId = null, $relatedUserType = null) {
-        $this->db->query(
-            "INSERT INTO tata_coin_transactions (user_id, user_type, transaction_type, amount, balance_after, description, related_user_id, related_user_type) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [$userId, $userType, $transactionType, $amount, $balanceAfter, $description, $relatedUserId, $relatedUserType]
-        );
+        // 使用insert方法，它会返回插入的ID
+        $transactionId = $this->db->insert('tata_coin_transactions', [
+            'user_id' => $userId,
+            'user_type' => $userType,
+            'transaction_type' => $transactionType,
+            'amount' => $amount,
+            'balance_after' => $balanceAfter,
+            'description' => $description,
+            'related_user_id' => $relatedUserId,
+            'related_user_type' => $relatedUserType
+        ]);
+
+        // 如果是消费交易，处理邀请返点
+        if ($transactionType === 'spend' && $amount < 0) {
+            $this->processInvitationCommission($transactionId, $userId, $userType, abs($amount));
+        }
+    }
+
+    /**
+     * 处理邀请返点
+     */
+    private function processInvitationCommission($transactionId, $spenderId, $spenderType, $amount) {
+        try {
+            require_once __DIR__ . '/InvitationManager.php';
+            $invitationManager = new InvitationManager();
+            if ($invitationManager->isInstalled()) {
+                $invitationManager->processInvitationCommission($transactionId, $spenderId, $spenderType, $amount);
+            }
+        } catch (Exception $e) {
+            // 邀请返点失败不影响主流程
+            error_log("Invitation commission failed: " . $e->getMessage());
+        }
     }
     
     /**

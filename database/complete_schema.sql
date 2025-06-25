@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女',
     avatar VARCHAR(255) DEFAULT NULL COMMENT '头像路径',
     tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，通过系统发放',
+    invited_by INT DEFAULT NULL COMMENT '邀请人ID',
+    invited_by_type ENUM('user', 'reader') DEFAULT NULL COMMENT '邀请人类型',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE

@@ -124,7 +124,7 @@ function loginAdmin($username, $password) {
 /**
  * 用户注册
  */
-function registerUser($data) {
+function registerUser($data, $inviteToken = null) {
     $db = Database::getInstance();
     
     // 验证数据
@@ -181,6 +181,27 @@ function registerUser($data) {
             'avatar' => $avatar
         ]);
 
+        // 处理邀请关系
+        if (!empty($inviteToken)) {
+            try {
+                require_once __DIR__ . '/InvitationManager.php';
+                $invitationManager = new InvitationManager();
+                $invitation = $invitationManager->getInvitationByToken($inviteToken);
+                if ($invitation) {
+                    // 设置邀请关系
+                    $db->query(
+                        "UPDATE users SET invited_by = ?, invited_by_type = ? WHERE id = ?",
+                        [$invitation['inviter_id'], $invitation['inviter_type'], $userId]
+                    );
+
+                    // 记录邀请成功
+                    $invitationManager->recordInvitationRelation($inviteToken, $userId, 'user');
+                }
+            } catch (Exception $e) {
+                error_log("Failed to process invitation for user {$userId}: " . $e->getMessage());
+            }
+        }
+
         // 为新用户初始化Tata Coin
         try {
             // 检查Tata Coin系统是否已安装
@@ -204,17 +225,34 @@ function registerUser($data) {
 /**
  * 塔罗师注册
  */
-function registerReader($data, $token) {
+function registerReader($data, $token = null, $inviteToken = null) {
     $db = Database::getInstance();
-    
-    // 验证注册链接
-    $link = $db->fetchOne(
-        "SELECT * FROM reader_registration_links WHERE token = ? AND is_used = 0 AND expires_at > NOW()",
-        [$token]
-    );
-    
-    if (!$link) {
-        return ['success' => false, 'errors' => ['注册链接无效或已过期']];
+
+    // 验证注册权限（管理员链接或邀请链接）
+    $link = null;
+    $invitation = null;
+
+    if (!empty($token)) {
+        // 验证管理员注册链接
+        $link = $db->fetchOne(
+            "SELECT * FROM reader_registration_links WHERE token = ? AND is_used = 0 AND expires_at > NOW()",
+            [$token]
+        );
+
+        if (!$link) {
+            return ['success' => false, 'errors' => ['管理员注册链接无效或已过期']];
+        }
+    } elseif (!empty($inviteToken)) {
+        // 验证邀请链接
+        require_once __DIR__ . '/InvitationManager.php';
+        $invitationManager = new InvitationManager();
+        $invitation = $invitationManager->getInvitationByToken($inviteToken);
+
+        if (!$invitation) {
+            return ['success' => false, 'errors' => ['邀请链接无效或已过期']];
+        }
+    } else {
+        return ['success' => false, 'errors' => ['缺少有效的注册链接']];
     }
     
     // 验证数据
@@ -281,14 +319,32 @@ function registerReader($data, $token) {
             'photo' => $photo,
             'photo_circle' => $data['photo_circle'] ?? null
         ]);
-        
-        // 标记注册链接为已使用
-        $db->update('reader_registration_links', [
-            'is_used' => 1,
-            'used_at' => date('Y-m-d H:i:s'),
-            'used_by' => $readerId
-        ], 'token = ?', [$token]);
-        
+
+        // 处理邀请关系
+        if (!empty($inviteToken) && $invitation) {
+            try {
+                // 设置邀请关系
+                $db->query(
+                    "UPDATE readers SET invited_by = ?, invited_by_type = ? WHERE id = ?",
+                    [$invitation['inviter_id'], $invitation['inviter_type'], $readerId]
+                );
+
+                // 记录邀请成功
+                $invitationManager->recordInvitationRelation($inviteToken, $readerId, 'reader');
+            } catch (Exception $e) {
+                error_log("Failed to process invitation for reader {$readerId}: " . $e->getMessage());
+            }
+        }
+
+        // 标记管理员注册链接为已使用（如果有）
+        if (!empty($token) && $link) {
+            $db->update('reader_registration_links', [
+                'is_used' => 1,
+                'used_at' => date('Y-m-d H:i:s'),
+                'used_by' => $readerId
+            ], 'token = ?', [$token]);
+        }
+
         return ['success' => true, 'reader_id' => $readerId];
     } catch (Exception $e) {
         return ['success' => false, 'errors' => ['注册失败，请稍后重试']];

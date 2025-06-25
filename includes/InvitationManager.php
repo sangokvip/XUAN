@@ -43,7 +43,19 @@ class InvitationManager {
         
         return $link ? $link['token'] : null;
     }
-    
+
+    /**
+     * 根据token获取邀请信息
+     * @param string $token 邀请token
+     * @return array|null 邀请信息
+     */
+    public function getInvitationByToken($token) {
+        return $this->db->fetchOne(
+            "SELECT * FROM invitation_links WHERE token = ? AND is_active = 1",
+            [$token]
+        );
+    }
+
     /**
      * 验证邀请链接
      * @param string $token 邀请链接token
@@ -147,7 +159,7 @@ class InvitationManager {
 
             $description = "邀请返点：{$spenderName}消费{$amount}币，返点{$commissionAmount}币";
 
-            $tataCoinManager->addBalance(
+            $tataCoinManager->earn(
                 $spender['invited_by'],
                 $spender['invited_by_type'],
                 $commissionAmount,
@@ -228,7 +240,7 @@ class InvitationManager {
 
             $description = "塔罗师邀请返点：{$reader['full_name']}收益{$earnings}币，返点{$commissionAmount}币";
 
-            $tataCoinManager->addBalance(
+            $tataCoinManager->earn(
                 $reader['invited_by'],
                 'reader',
                 $commissionAmount,
@@ -354,7 +366,46 @@ class InvitationManager {
             [$inviterId, $inviterType, $limit, $offset]
         );
     }
-    
+
+    /**
+     * 获取被邀请用户的详细信息
+     * @param int $inviterId 邀请人ID
+     * @param string $inviterType 邀请人类型
+     * @return array 被邀请用户列表
+     */
+    public function getInvitedUsersDetails($inviterId, $inviterType) {
+        // 获取被邀请的用户
+        $invitedUsers = $this->db->fetchAll(
+            "SELECT u.id, u.full_name, u.email, u.created_at,
+                    COALESCE(SUM(ABS(t.amount)), 0) as total_spent,
+                    COUNT(DISTINCT t.id) as transaction_count
+             FROM users u
+             LEFT JOIN tata_coin_transactions t ON u.id = t.user_id AND t.user_type = 'user' AND t.amount < 0
+             WHERE u.invited_by = ? AND u.invited_by_type = ?
+             GROUP BY u.id, u.full_name, u.email, u.created_at
+             ORDER BY u.created_at DESC",
+            [$inviterId, $inviterType]
+        );
+
+        // 获取被邀请的塔罗师
+        $invitedReaders = $this->db->fetchAll(
+            "SELECT r.id, r.full_name, r.email, r.created_at,
+                    COALESCE(SUM(t.amount), 0) as total_earned,
+                    COUNT(DISTINCT t.id) as transaction_count
+             FROM readers r
+             LEFT JOIN tata_coin_transactions t ON r.id = t.user_id AND t.user_type = 'reader' AND t.amount > 0
+             WHERE r.invited_by = ? AND r.invited_by_type = ?
+             GROUP BY r.id, r.full_name, r.email, r.created_at
+             ORDER BY r.created_at DESC",
+            [$inviterId, $inviterType]
+        );
+
+        return [
+            'users' => $invitedUsers,
+            'readers' => $invitedReaders
+        ];
+    }
+
     /**
      * 检查邀请系统是否已安装
      * @return bool

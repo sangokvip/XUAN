@@ -5,20 +5,38 @@ require_once '../config/config.php';
 $errors = [];
 $success = '';
 $token = $_GET['token'] ?? '';
+$inviteToken = $_GET['invite'] ?? '';
 
-// 验证token
-if (empty($token)) {
-    $errors[] = '无效的注册链接';
-} else {
+// 验证token（管理员生成的注册链接）
+$adminLink = null;
+if (!empty($token)) {
     $db = Database::getInstance();
-    $link = $db->fetchOne(
+    $adminLink = $db->fetchOne(
         "SELECT * FROM reader_registration_links WHERE token = ? AND is_used = 0 AND expires_at > NOW()",
         [$token]
     );
-    
-    if (!$link) {
-        $errors[] = '注册链接无效或已过期';
+
+    if (!$adminLink) {
+        $errors[] = '管理员注册链接无效或已过期';
     }
+}
+
+// 验证邀请码（塔罗师邀请链接）
+$invitation = null;
+if (!empty($inviteToken)) {
+    require_once '../includes/InvitationManager.php';
+    $invitationManager = new InvitationManager();
+    $invitation = $invitationManager->getInvitationByToken($inviteToken);
+    if (!$invitation) {
+        $errors[] = '邀请链接无效或已过期';
+    }
+}
+
+// 必须有管理员链接或邀请码之一
+if (empty($token) && empty($inviteToken)) {
+    $errors[] = '无效的注册链接';
+} elseif (!$adminLink && !$invitation) {
+    $errors[] = '注册链接无效';
 }
 
 // 如果已登录，重定向
@@ -111,7 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 使用默认头像
             $data['photo'] = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
 
-            $result = registerReader($data, $token);
+            // 优先使用管理员token，如果没有则使用邀请token
+            $registrationToken = !empty($token) ? $token : null;
+            $result = registerReader($data, $registrationToken, $inviteToken);
             if ($result['success']) {
                 $success = '注册成功！请使用您的用户名和密码登录。';
                 // 清空表单数据
@@ -170,7 +190,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $result = registerReader($data, $token);
+                // 优先使用管理员token，如果没有则使用邀请token
+                $registrationToken = !empty($token) ? $token : null;
+                $result = registerReader($data, $registrationToken, $inviteToken);
                 if ($result['success']) {
                     $success = '注册成功！请使用您的用户名和密码登录。';
                     // 清空表单数据

@@ -32,6 +32,9 @@ $limit = 20;
 $offset = ($page - 1) * $limit;
 $commissionHistory = $invitationManager->getCommissionHistory($readerId, 'reader', $limit, $offset);
 
+// 获取被邀请用户的详细信息
+$invitedUsersDetails = $invitationManager->getInvitedUsersDetails($readerId, 'reader');
+
 $pageTitle = '邀请管理';
 ?>
 
@@ -285,6 +288,79 @@ $pageTitle = '邀请管理';
             </ul>
         </div>
         
+        <!-- 被邀请用户详情 -->
+        <div class="invitation-card">
+            <h3 class="card-title">👥 被邀请用户详情</h3>
+
+            <?php if (empty($invitedUsersDetails['users']) && empty($invitedUsersDetails['readers'])): ?>
+                <div class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <h3>暂无被邀请用户</h3>
+                    <p>快去邀请朋友注册吧！</p>
+                </div>
+            <?php else: ?>
+                <?php if (!empty($invitedUsersDetails['users'])): ?>
+                    <h4 style="color: #3b82f6; margin-bottom: 15px;">📱 被邀请用户 (<?php echo count($invitedUsersDetails['users']); ?>人)</h4>
+                    <table class="commission-table">
+                        <thead>
+                            <tr>
+                                <th>用户名</th>
+                                <th>邮箱</th>
+                                <th>注册时间</th>
+                                <th>消费总额</th>
+                                <th>消费次数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($invitedUsersDetails['users'] as $user): ?>
+                                <tr>
+                                    <td><?php echo h($user['full_name']); ?></td>
+                                    <td><?php echo h($user['email']); ?></td>
+                                    <td><?php echo date('Y-m-d', strtotime($user['created_at'])); ?></td>
+                                    <td>
+                                        <span style="color: #dc3545; font-weight: bold;">
+                                            <?php echo number_format($user['total_spent']); ?> 币
+                                        </span>
+                                    </td>
+                                    <td><?php echo $user['transaction_count']; ?> 次</td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+
+                <?php if (!empty($invitedUsersDetails['readers'])): ?>
+                    <h4 style="color: #f59e0b; margin: 25px 0 15px 0;">🔮 被邀请塔罗师 (<?php echo count($invitedUsersDetails['readers']); ?>人)</h4>
+                    <table class="commission-table">
+                        <thead>
+                            <tr>
+                                <th>塔罗师名</th>
+                                <th>邮箱</th>
+                                <th>注册时间</th>
+                                <th>收益总额</th>
+                                <th>收益次数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($invitedUsersDetails['readers'] as $reader): ?>
+                                <tr>
+                                    <td><?php echo h($reader['full_name']); ?></td>
+                                    <td><?php echo h($reader['email']); ?></td>
+                                    <td><?php echo date('Y-m-d', strtotime($reader['created_at'])); ?></td>
+                                    <td>
+                                        <span style="color: #28a745; font-weight: bold;">
+                                            <?php echo number_format($reader['total_earned']); ?> 币
+                                        </span>
+                                    </td>
+                                    <td><?php echo $reader['transaction_count']; ?> 次</td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+
         <!-- 返点记录 -->
         <div class="invitation-card">
             <h3 class="card-title">📊 返点记录</h3>
