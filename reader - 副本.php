@@ -1946,7 +1946,7 @@ if (isset($_SESSION['user_id'])) {
             readersGrid.classList.add('loading');
 
             // 发送AJAX请求
-            fetch('<?php echo SITE_URL; ?>/api/get_related_readers.php', {
+            fetch('./api/get_related_readers.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -1955,6 +1955,7 @@ if (isset($_SESSION['user_id'])) {
             })
             .then(response => {
                 console.log('响应状态:', response.status);
+                console.log('响应头:', response.headers);
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status + ': ' + response.statusText);
                 }
@@ -1966,16 +1967,41 @@ if (isset($_SESSION['user_id'])) {
                     const data = JSON.parse(text);
                     console.log('解析后的数据:', data);
 
-                    if (data.success && data.html) {
+                    if (data.success && data.readers) {
+                        // 更新塔罗师列表
+                        let newHtml = '';
+                        data.readers.forEach(reader => {
+                            newHtml += `
+                                <div class="reader-card">
+                                    <div class="reader-photo">
+                                        <a href="${reader.site_url}/reader.php?id=${reader.id}" class="reader-photo-link">
+                                            ${reader.photo_html}
+                                        </a>
+                                    </div>
+                                    <div class="reader-info">
+                                        <h3>${reader.full_name}</h3>
+                                        <p>从业 ${reader.experience_years} 年</p>
+                                        ${reader.specialty_tags ? `
+                                            <div class="specialties">
+                                                <strong>擅长：</strong>
+                                                ${reader.specialty_tags}
+                                            </div>
+                                        ` : ''}
+                                        <a href="${reader.site_url}/reader.php?id=${reader.id}" class="btn btn-primary">查看详情</a>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
                         // 淡出效果
                         readersGrid.style.opacity = '0';
                         setTimeout(() => {
-                            readersGrid.innerHTML = data.html;
+                            readersGrid.innerHTML = newHtml;
                             readersGrid.style.opacity = '1';
                         }, 300);
                     } else {
                         console.error('API返回错误:', data);
-                        alert('获取塔罗师失败：' + (data.message || '未知错误'));
+                        alert('获取塔罗师失败：' + (data.error || '未知错误'));
                     }
                 } catch (parseError) {
                     console.error('JSON解析错误:', parseError);
