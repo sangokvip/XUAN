@@ -294,15 +294,38 @@ $pageTitle = 'Tata Coin使用说明';
                     <div class="feature-desc">注册成功后立即获得100枚Tata Coin，让您开始探索我们的服务。</div>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon">🎮</div>
-                    <div class="feature-title">活动奖励</div>
-                    <div class="feature-desc">参与网站活动、完成任务等方式获得额外的Tata Coin奖励。</div>
+                    <div class="feature-icon">📅</div>
+                    <div class="feature-title">每日签到</div>
+                    <div class="feature-desc">连续签到7天可获得57枚Tata Coin，每天5-12枚不等。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👀</div>
+                    <div class="feature-title">浏览页面</div>
+                    <div class="feature-desc">每个页面停留5秒可获得1枚Tata Coin，每日最多10枚。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-title">完善资料</div>
+                    <div class="feature-desc">完善头像、性别等个人信息可获得20枚Tata Coin。</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <div class="feature-title">邀请朋友</div>
+                    <div class="feature-desc">邀请朋友注册并首次消费可获得20枚Tata Coin。</div>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">💝</div>
                     <div class="feature-title">管理员赠送</div>
                     <div class="feature-desc">在特殊情况下，管理员可能会向用户赠送Tata Coin。</div>
                 </div>
+            </div>
+
+            <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 15px; padding: 20px; margin-top: 20px;">
+                <h4 style="color: #92400e; margin-bottom: 10px;">💡 每日获取上限</h4>
+                <p style="color: #92400e; margin: 0;">
+                    为了保持平台经济平衡，每日通过非付费方式最多可获得<strong>30枚Tata Coin</strong>。
+                    包括签到奖励、浏览奖励等，但不包括邀请奖励和管理员赠送。
+                </p>
             </div>
         </div>
         

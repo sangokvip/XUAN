@@ -120,6 +120,7 @@ $popularReaders = $db->fetchAll(
                 <div class="action-buttons">
                     <a href="generate_reader_link.php" class="btn btn-primary">生成塔罗师注册链接</a>
                     <a href="login_security.php" class="btn btn-warning">🔐 登录安全管理</a>
+                    <a href="view_count_management.php" class="btn btn-info">📊 查看次数管理</a>
                     <a href="readers.php" class="btn btn-secondary">管理塔罗师</a>
                     <a href="users.php" class="btn btn-secondary">管理用户</a>
                     <a href="settings.php" class="btn btn-secondary">系统设置</a>

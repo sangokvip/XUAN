@@ -76,6 +76,13 @@ $totalPages = ceil($total / READERS_PER_PAGE);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>塔罗师列表 - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+
+    <?php
+    // 输出等级标签CSS
+    require_once 'includes/level_badge.php';
+    outputLevelBadgeCSS();
+    ?>
+
     <style>
         /* 塔罗师照片竖向展示 - 适合竖图显示 */
         .reader-photo {
@@ -556,7 +563,14 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                             <div class="reader-info">
                                 <!-- 塔罗师名字和从业年数 -->
                                 <div class="reader-header">
-                                    <h3 class="reader-name"><?php echo h($reader['full_name']); ?></h3>
+                                    <h3 class="reader-name">
+                                        <?php echo h($reader['full_name']); ?>
+                                        <?php
+                                        // 显示塔罗师等级标签
+                                        require_once 'includes/level_badge.php';
+                                        echo getReaderLevelBadgeHTML($reader['is_featured'] ? '推荐塔罗师' : '塔罗师', 'small');
+                                        ?>
+                                    </h3>
                                     <span class="reader-experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
                                 </div>
 

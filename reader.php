@@ -88,15 +88,18 @@ if (isset($_SESSION['user_id']) && !$showContact && !$hasViewedContact) {
     }
 }
 
-// 更新页面查看次数（每次访问都增加）
+// 使用ViewCountManager管理查看次数，防止恶意刷新
+require_once 'includes/ViewCountManager.php';
+$viewCountManager = new ViewCountManager();
+
+// 记录查看（30分钟冷却时间）
+$viewRecorded = $viewCountManager->recordView($readerId, 30);
+
+// 获取查看次数和统计信息
+$totalViews = $viewCountManager->getViewCount($readerId);
+$viewStats = $viewCountManager->getViewStats($readerId);
+
 $db = Database::getInstance();
-
-// 更新readers表中的view_count字段
-$db->query("UPDATE readers SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?", [$readerId]);
-
-// 获取更新后的查看次数
-$readerData = $db->fetchOne("SELECT view_count FROM readers WHERE id = ?", [$readerId]);
-$totalViews = $readerData['view_count'] ?? 0;
 
 // 初始化评价系统
 $reviewManager = new ReviewManager();
@@ -106,13 +109,15 @@ $questionError = '';
 $questionSuccess = '';
 
 // 处理评价提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review']) && isset($_SESSION['user_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review']) && (isset($_SESSION['user_id']) || $isAdmin)) {
     try {
         $rating = (int)($_POST['rating'] ?? 0);
         $reviewText = trim($_POST['review_text'] ?? '');
         $isAnonymous = isset($_POST['is_anonymous']);
 
-        $reviewManager->addReview($readerId, $_SESSION['user_id'], $rating, $reviewText, $isAnonymous);
+        // 获取当前用户ID（普通用户或管理员）
+        $currentUserId = $_SESSION['user_id'] ?? $_SESSION['admin_id'];
+        $reviewManager->addReview($readerId, $currentUserId, $rating, $reviewText, $isAnonymous, $isAdmin);
 
         // 重定向避免重复提交
         header("Location: reader.php?id={$readerId}&review_success=1");
@@ -123,12 +128,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_review']) && i
 }
 
 // 处理问题提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_question']) && isset($_SESSION['user_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_question']) && (isset($_SESSION['user_id']) || $isAdmin)) {
     try {
         $question = trim($_POST['question'] ?? '');
         $isAnonymous = isset($_POST['question_anonymous']);
 
-        $reviewManager->addQuestion($readerId, $_SESSION['user_id'], $question, $isAnonymous);
+        // 获取当前用户ID（普通用户或管理员）
+        $currentUserId = $_SESSION['user_id'] ?? $_SESSION['admin_id'];
+        $reviewManager->addQuestion($readerId, $currentUserId, $question, $isAnonymous);
 
         // 重定向避免重复提交
         header("Location: reader.php?id={$readerId}&question_success=1");
@@ -139,13 +146,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_question']) &&
 }
 
 // 处理回答提交
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_answer']) && isset($_SESSION['user_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_answer']) && (isset($_SESSION['user_id']) || $isAdmin)) {
     try {
         $questionId = (int)($_POST['question_id'] ?? 0);
         $answer = trim($_POST['answer'] ?? '');
         $isAnonymous = isset($_POST['answer_anonymous']);
 
-        $reviewManager->addAnswer($questionId, $_SESSION['user_id'], $answer, $isAnonymous);
+        // 获取当前用户ID（普通用户或管理员）
+        $currentUserId = $_SESSION['user_id'] ?? $_SESSION['admin_id'];
+        $reviewManager->addAnswer($questionId, $currentUserId, $answer, $isAnonymous);
 
         // 重定向避免重复提交
         header("Location: reader.php?id={$readerId}&answer_success=1");
@@ -200,14 +209,24 @@ $canReview = false;
 $hasReviewed = false;
 $hasPurchased = false;
 
-if (isset($_SESSION['user_id'])) {
-    $hasPurchased = $reviewManager->hasUserPurchased($_SESSION['user_id'], $readerId);
-    $hasReviewed = $reviewManager->hasUserReviewed($_SESSION['user_id'], $readerId);
-    $canReview = $hasPurchased && !$hasReviewed;
+if (isset($_SESSION['user_id']) || $isAdmin) {
+    $currentUserId = $_SESSION['user_id'] ?? $_SESSION['admin_id'];
+
+    if ($isAdmin) {
+        // 管理员权限：可以评价，但需要检查是否已评价过
+        $hasReviewed = $reviewManager->hasUserReviewed($currentUserId, $readerId);
+        $canReview = !$hasReviewed;
+        $hasPurchased = true; // 管理员视为已购买
+    } else {
+        // 普通用户权限
+        $hasPurchased = $reviewManager->hasUserPurchased($currentUserId, $readerId);
+        $hasReviewed = $reviewManager->hasUserReviewed($currentUserId, $readerId);
+        $canReview = $hasPurchased && !$hasReviewed;
+    }
 
     // 获取用户点赞状态
     $reviewIds = array_column($reviews, 'id');
-    $userLikes = $reviewManager->getUserLikeStatus($_SESSION['user_id'], $reviewIds);
+    $userLikes = $reviewManager->getUserLikeStatus($currentUserId, $reviewIds);
 }
 ?>
 
@@ -476,6 +495,7 @@ if (isset($_SESSION['user_id'])) {
         .star-rating {
             display: flex;
             gap: 3px;
+            direction: ltr; /* 从左到右排列 */
         }
 
         .star-rating input[type="radio"] {
@@ -489,14 +509,39 @@ if (isset($_SESSION['user_id'])) {
             transition: color 0.2s ease;
         }
 
-        .star-rating input[type="radio"]:checked ~ .star-label,
-        .star-rating input[type="radio"]:checked + .star-label {
+        /* 选中状态：当前星星及其前面的星星都高亮 */
+        .star-rating input[type="radio"]:checked ~ .star-label {
             color: #f59e0b;
         }
 
-        .star-rating .star-label:hover,
-        .star-rating input[type="radio"]:hover + .star-label {
+        /* 悬停效果 */
+        .star-rating .star-label:hover {
             color: #f59e0b;
+        }
+
+        /* 默认5星选中状态 */
+        .star-rating input[type="radio"]:checked {
+            ~ .star-label {
+                color: #f59e0b;
+            }
+        }
+
+        /* 评分错误提示 */
+        .rating-error {
+            margin-top: 5px;
+            padding: 8px 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            color: #dc2626;
+            font-size: 0.875rem;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
 
         .form-group {
@@ -1280,6 +1325,12 @@ if (isset($_SESSION['user_id'])) {
             }
         }
     </style>
+
+    <?php
+    // 输出等级标签CSS
+    require_once 'includes/level_badge.php';
+    outputLevelBadgeCSS();
+    ?>
 </head>
 <body>
     <?php include 'includes/header.php'; ?>
@@ -1555,7 +1606,7 @@ if (isset($_SESSION['user_id'])) {
 
 
                     <!-- 评价表单 -->
-                    <?php if (isset($_SESSION['user_id'])): ?>
+                    <?php if ($isAdmin || isset($_SESSION['user_id'])): ?>
                         <?php if ($canReview): ?>
                             <div class="review-form-section">
                                 <h3>📝 写评价</h3>
@@ -1566,15 +1617,18 @@ if (isset($_SESSION['user_id'])) {
                                     <div class="alert alert-success"><?php echo h($reviewSuccess); ?></div>
                                 <?php endif; ?>
 
-                                <form method="POST" class="review-form">
+                                <form method="POST" class="review-form" id="reviewForm">
                                     <div class="form-row">
                                         <div class="rating-input">
                                             <label>评分</label>
                                             <div class="star-rating">
                                                 <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                    <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" required>
+                                                    <input type="radio" name="rating" value="<?php echo $i; ?>" id="star<?php echo $i; ?>" <?php echo $i == 5 ? 'checked' : ''; ?> required>
                                                     <label for="star<?php echo $i; ?>" class="star-label">★</label>
                                                 <?php endfor; ?>
+                                            </div>
+                                            <div id="ratingError" class="rating-error" style="display: none;">
+                                                <span>请先评分</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1623,11 +1677,17 @@ if (isset($_SESSION['user_id'])) {
                                             <img src="<?php echo h($review['user_avatar'] ?: ($review['is_anonymous'] ? '../img/anonymous.jpg' : '../img/nm.jpg')); ?>"
                                                  alt="用户头像" class="reviewer-avatar">
                                             <div class="reviewer-details">
-                                                <div class="reviewer-name"><?php echo h($review['user_name']); ?></div>
+                                                <div class="reviewer-name">
+                                                    <?php echo h($review['user_name']); ?>
+                                                    <?php
+                                                    // 显示用户等级标签
+                                                    if (!$review['is_anonymous'] && !empty($review['user_id'])) {
+                                                        require_once 'includes/level_badge.php';
+                                                        echo getUserLevelBadge($review['user_id'], 'user', 'small');
+                                                    }
+                                                    ?>
+                                                </div>
                                                 <div class="reviewer-meta">
-                                                    <?php if ($review['is_purchased']): ?>
-                                                        <span class="purchased-badge">已购买</span>
-                                                    <?php endif; ?>
                                                     <div class="review-rating">
                                                         <?php for ($i = 1; $i <= 5; $i++): ?>
                                                             <span class="star <?php echo $i <= $review['rating'] ? 'filled' : ''; ?>">★</span>
@@ -1646,7 +1706,7 @@ if (isset($_SESSION['user_id'])) {
                                     <?php endif; ?>
 
                                     <div class="review-actions">
-                                        <?php if (isset($_SESSION['user_id'])): ?>
+                                        <?php if ($isAdmin || isset($_SESSION['user_id'])): ?>
                                             <button class="like-btn <?php echo isset($userLikes[$review['id']]) ? 'liked' : ''; ?>"
                                                     data-review-id="<?php echo $review['id']; ?>">
                                                 👍 <span class="like-count"><?php echo $review['like_count']; ?></span>
@@ -1665,7 +1725,7 @@ if (isset($_SESSION['user_id'])) {
                         <h3>❓ 问大家</h3>
 
                         <!-- 提问表单 -->
-                        <?php if (isset($_SESSION['user_id'])): ?>
+                        <?php if ($isAdmin || isset($_SESSION['user_id'])): ?>
                             <div class="question-form-section">
                                 <?php if ($questionError): ?>
                                     <div class="alert alert-error"><?php echo h($questionError); ?></div>
@@ -1686,6 +1746,10 @@ if (isset($_SESSION['user_id'])) {
                                         <button type="submit" name="submit_question" class="btn btn-secondary">提问</button>
                                     </div>
                                 </form>
+                            </div>
+                        <?php else: ?>
+                            <div class="review-notice">
+                                <p>💡 <a href="auth/login.php">登录</a> 后可以提问</p>
                             </div>
                         <?php endif; ?>
 
@@ -1714,9 +1778,6 @@ if (isset($_SESSION['user_id'])) {
                                                     <div class="answer-item">
                                                         <div class="answer-header">
                                                             <span class="answerer-name"><?php echo h($answer['user_name']); ?></span>
-                                                            <?php if ($answer['is_purchased']): ?>
-                                                                <span class="purchased-badge">已购买</span>
-                                                            <?php endif; ?>
                                                             <span class="answer-date"><?php echo date('m-d H:i', strtotime($answer['created_at'])); ?></span>
                                                         </div>
                                                         <div class="answer-content">
@@ -1728,7 +1789,7 @@ if (isset($_SESSION['user_id'])) {
                                         <?php endif; ?>
 
                                         <!-- 回答表单 -->
-                                        <?php if (isset($_SESSION['user_id'])): ?>
+                                        <?php if ($isAdmin || isset($_SESSION['user_id'])): ?>
                                             <div class="answer-form">
                                                 <form method="POST" class="inline-form">
                                                     <input type="hidden" name="question_id" value="<?php echo $question['id']; ?>">
@@ -1743,6 +1804,10 @@ if (isset($_SESSION['user_id'])) {
                                                         <button type="submit" name="submit_answer" class="btn btn-small btn-secondary">回答</button>
                                                     </div>
                                                 </form>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="review-notice" style="margin-top: 10px; padding: 8px 12px; font-size: 0.85rem;">
+                                                <p><a href="auth/login.php">登录</a> 后可以回答</p>
                                             </div>
                                         <?php endif; ?>
                                     </div>
@@ -1852,6 +1917,53 @@ if (isset($_SESSION['user_id'])) {
             const starInputs = document.querySelectorAll('.star-rating input[type="radio"]');
             const starLabels = document.querySelectorAll('.star-rating .star-label');
 
+            // 初始化显示（默认5星选中）
+            function updateStarDisplay() {
+                const checkedInput = document.querySelector('.star-rating input[type="radio"]:checked');
+                if (checkedInput) {
+                    const checkedIndex = Array.from(starInputs).indexOf(checkedInput);
+                    for (let i = 0; i <= checkedIndex; i++) {
+                        starLabels[i].style.color = '#f59e0b';
+                    }
+                    for (let i = checkedIndex + 1; i < starLabels.length; i++) {
+                        starLabels[i].style.color = '#e5e7eb';
+                    }
+                }
+            }
+
+            // 页面加载时初始化
+            updateStarDisplay();
+
+            // 表单验证
+            const reviewForm = document.getElementById('reviewForm');
+            if (reviewForm) {
+                reviewForm.addEventListener('submit', function(e) {
+                    const checkedRating = document.querySelector('.star-rating input[type="radio"]:checked');
+                    const ratingError = document.getElementById('ratingError');
+
+                    if (!checkedRating) {
+                        e.preventDefault();
+                        ratingError.style.display = 'block';
+
+                        // 3秒后自动隐藏错误提示
+                        setTimeout(() => {
+                            ratingError.style.display = 'none';
+                        }, 3000);
+
+                        // 滚动到评分区域
+                        document.querySelector('.star-rating').scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+
+                        return false;
+                    }
+
+                    // 隐藏错误提示
+                    ratingError.style.display = 'none';
+                });
+            }
+
             starLabels.forEach((label, index) => {
                 label.addEventListener('mouseenter', function() {
                     // 高亮当前星级及之前的星级
@@ -1865,30 +1977,14 @@ if (isset($_SESSION['user_id'])) {
 
                 label.addEventListener('mouseleave', function() {
                     // 恢复到选中状态
-                    const checkedInput = document.querySelector('.star-rating input[type="radio"]:checked');
-                    if (checkedInput) {
-                        const checkedIndex = Array.from(starInputs).indexOf(checkedInput);
-                        for (let i = 0; i <= checkedIndex; i++) {
-                            starLabels[i].style.color = '#f59e0b';
-                        }
-                        for (let i = checkedIndex + 1; i < starLabels.length; i++) {
-                            starLabels[i].style.color = '#e5e7eb';
-                        }
-                    } else {
-                        starLabels.forEach(label => {
-                            label.style.color = '#e5e7eb';
-                        });
-                    }
+                    updateStarDisplay();
                 });
 
                 label.addEventListener('click', function() {
-                    // 更新选中状态的显示
-                    for (let i = 0; i <= index; i++) {
-                        starLabels[i].style.color = '#f59e0b';
-                    }
-                    for (let i = index + 1; i < starLabels.length; i++) {
-                        starLabels[i].style.color = '#e5e7eb';
-                    }
+                    // 选中对应的radio
+                    starInputs[index].checked = true;
+                    // 更新显示
+                    updateStarDisplay();
                 });
             });
 

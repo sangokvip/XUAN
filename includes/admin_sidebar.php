@@ -33,6 +33,13 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
+            <a href="<?php echo SITE_URL; ?>/admin/view_count_management.php"
+               class="<?php echo $current_page === 'view_count_management.php' ? 'active' : ''; ?>">
+                <span class="icon">📊</span>
+                查看次数管理
+            </a>
+        </li>
+        <li>
             <a href="<?php echo SITE_URL; ?>/admin/messages.php"
                class="<?php echo $current_page === 'messages.php' ? 'active' : ''; ?>">
                 <span class="icon">📢</span>

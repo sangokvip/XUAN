@@ -266,7 +266,7 @@ class InvitationManager {
      */
     public function getCommissionRate() {
         $setting = $this->db->fetchOne(
-            "SELECT setting_value FROM site_settings WHERE setting_key = 'invitation_commission_rate'"
+            "SELECT setting_value FROM settings WHERE setting_key = 'invitation_commission_rate'"
         );
 
         return $setting ? (float)$setting['setting_value'] : 5.0;
@@ -278,7 +278,7 @@ class InvitationManager {
      */
     public function getReaderInvitationCommissionRate() {
         $setting = $this->db->fetchOne(
-            "SELECT setting_value FROM site_settings WHERE setting_key = 'reader_invitation_commission_rate'"
+            "SELECT setting_value FROM settings WHERE setting_key = 'reader_invitation_commission_rate'"
         );
 
         return $setting ? (float)$setting['setting_value'] : 20.0;

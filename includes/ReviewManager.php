@@ -48,18 +48,21 @@ class ReviewManager {
      * @param int $rating 评分 (1-5)
      * @param string $reviewText 评价内容
      * @param bool $isAnonymous 是否匿名
+     * @param bool $isAdmin 是否为管理员
      * @return bool
      */
-    public function addReview($readerId, $userId, $rating, $reviewText, $isAnonymous = false) {
+    public function addReview($readerId, $userId, $rating, $reviewText, $isAnonymous = false, $isAdmin = false) {
         // 检查是否已经评价过
         if ($this->hasUserReviewed($userId, $readerId)) {
             throw new Exception('您已经评价过该塔罗师了');
         }
-        
-        // 检查是否已购买
-        $isPurchased = $this->hasUserPurchased($userId, $readerId);
-        if (!$isPurchased) {
-            throw new Exception('只有购买过服务的用户才能评价');
+
+        // 检查是否已购买（管理员跳过此检查）
+        if (!$isAdmin) {
+            $isPurchased = $this->hasUserPurchased($userId, $readerId);
+            if (!$isPurchased) {
+                throw new Exception('只有购买过服务的用户才能评价');
+            }
         }
         
         // 验证评分
@@ -73,8 +76,7 @@ class ReviewManager {
                 'user_id' => $userId,
                 'rating' => $rating,
                 'review_text' => trim($reviewText),
-                'is_anonymous' => $isAnonymous ? 1 : 0,
-                'is_purchased' => 1
+                'is_anonymous' => $isAnonymous ? 1 : 0
             ]);
 
             // 手动更新评分统计
@@ -187,15 +189,11 @@ class ReviewManager {
             throw new Exception('问题不存在');
         }
         
-        // 检查是否已购买过该塔罗师的服务
-        $isPurchased = $this->hasUserPurchased($userId, $question['reader_id']);
-        
         $this->db->insert('reader_question_answers', [
             'question_id' => $questionId,
             'user_id' => $userId,
             'answer' => trim($answer),
-            'is_anonymous' => $isAnonymous ? 1 : 0,
-            'is_purchased' => $isPurchased ? 1 : 0
+            'is_anonymous' => $isAnonymous ? 1 : 0
         ]);
         
         return true;
@@ -232,16 +230,16 @@ class ReviewManager {
      */
     public function getAnswers($questionId) {
         return $this->db->fetchAll(
-            "SELECT a.*, 
-                    CASE 
+            "SELECT a.*,
+                    CASE
                         WHEN a.is_anonymous = 1 THEN '匿名用户'
-                        ELSE u.full_name 
+                        ELSE u.full_name
                     END as user_name,
                     u.avatar as user_avatar
              FROM reader_question_answers a
              LEFT JOIN users u ON a.user_id = u.id
              WHERE a.question_id = ?
-             ORDER BY a.is_purchased DESC, a.created_at ASC",
+             ORDER BY a.created_at ASC",
             [$questionId]
         );
     }

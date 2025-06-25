@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone VARCHAR(20),
     gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女',
     avatar VARCHAR(255) DEFAULT NULL COMMENT '头像路径',
-    tata_coin INT DEFAULT 100 COMMENT 'Tata Coin余额，新用户默认100',
+    tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，通过系统发放',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE
@@ -273,10 +273,65 @@ CREATE TABLE IF NOT EXISTS message_reads (
     UNIQUE KEY unique_message_user (message_id, user_id, user_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息阅读记录表';
 
+-- 每日签到记录表
+CREATE TABLE IF NOT EXISTS daily_check_ins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    check_in_date DATE NOT NULL,
+    consecutive_days INT NOT NULL DEFAULT 1,
+    reward_coins INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_date (user_id, check_in_date),
+    INDEX idx_date (check_in_date),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_date (user_id, check_in_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='每日签到记录表';
+
+-- 页面浏览奖励记录表
+CREATE TABLE IF NOT EXISTS page_browse_rewards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    page_url VARCHAR(500) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    reward_coins INT NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id),
+    INDEX idx_ip_date (ip_address, created_at),
+    INDEX idx_created_at (created_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='页面浏览奖励记录表';
+
+-- 用户等级表
+CREATE TABLE IF NOT EXISTS user_levels (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    user_type ENUM('user', 'reader') NOT NULL,
+    level INT NOT NULL DEFAULT 1,
+    level_name VARCHAR(50) NOT NULL,
+    total_spent INT DEFAULT 0 COMMENT '累计消费（用户）',
+    total_earned INT DEFAULT 0 COMMENT '累计收入（塔罗师）',
+    discount_rate INT DEFAULT 0 COMMENT '折扣率（%）',
+    priority_score INT DEFAULT 0 COMMENT '优先级分数（塔罗师）',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id, user_type),
+    INDEX idx_level (level),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_level (user_id, user_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户等级表';
+
 -- 插入默认设置
 INSERT INTO settings (setting_key, setting_value, description) VALUES
 ('site_name', '塔罗师展示平台', '网站名称'),
 ('site_description', '专业塔罗师展示平台', '网站描述'),
 ('max_featured_readers', '6', '首页最大推荐塔罗师数量'),
-('registration_link_hours', '24', '注册链接有效期（小时）')
+('registration_link_hours', '24', '注册链接有效期（小时）'),
+('daily_browse_limit', '10', '每日浏览奖励上限'),
+('profile_completion_reward', '20', '完善资料奖励金额'),
+('invitation_user_reward', '20', '邀请用户奖励'),
+('invitation_reader_reward', '50', '邀请塔罗师奖励'),
+('daily_earning_limit', '30', '每日非付费获取上限'),
+('reader_commission_rate', '50', '塔罗师分成比例（%）'),
+('featured_reader_cost', '30', '查看推荐塔罗师费用'),
+('normal_reader_cost', '10', '查看普通塔罗师费用'),
+('new_user_tata_coin', '100', '新用户注册赠送金额')
 ON DUPLICATE KEY UPDATE setting_key = setting_key;

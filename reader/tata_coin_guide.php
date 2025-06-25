@@ -327,6 +327,41 @@ $pageTitle = 'Tata Coin详细说明';
                     </div>
                 </div>
                 
+                <!-- 塔罗师等级系统 -->
+                <div class="guide-section">
+                    <h2 class="section-title">
+                        <div class="section-icon">🏆</div>
+                        塔罗师等级系统
+                    </h2>
+
+                    <?php
+                    require_once '../includes/level_badge.php';
+                    outputLevelBadgeCSS();
+
+                    $readerLevel = $tataCoinManager->getUserLevel($readerId, 'reader');
+                    ?>
+
+                    <div class="share-explanation">
+                        <div class="share-title">
+                            <span>🎖️</span>
+                            您的当前等级：<?php echo getReaderLevelBadgeHTML($readerLevel['level_name'], 'medium'); ?>
+                        </div>
+                        <div class="share-details">
+                            <p>平台设有两种塔罗师等级：</p>
+                            <ul style="margin: 15px 0; padding-left: 20px;">
+                                <li><?php echo getReaderLevelBadgeHTML('塔罗师', 'medium'); ?> <strong>塔罗师</strong> - 平台认证的专业塔罗师</li>
+                                <li><?php echo getReaderLevelBadgeHTML('推荐塔罗师', 'medium'); ?> <strong>推荐塔罗师</strong> - 平台重点推荐的优质塔罗师</li>
+                            </ul>
+                            <p><strong>推荐塔罗师特权：</strong></p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li>首页优先展示，获得更多曝光机会</li>
+                                <li>更高的查看费用（<?php echo $featuredCost; ?> vs <?php echo $normalCost; ?> Tata Coin）</li>
+                                <li>专属的推荐标识和徽章</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 如何增加收益 -->
                 <div class="guide-section">
                     <h2 class="section-title">
@@ -338,8 +373,9 @@ $pageTitle = 'Tata Coin详细说明';
                             <li><strong>完善个人资料：</strong>上传清晰的个人照片、详细的个人简介和专业的价格列表</li>
                             <li><strong>提升专业度：</strong>在擅长方向中明确标注您的专业领域</li>
                             <li><strong>积极互动：</strong>及时回复用户咨询，提供优质的服务体验</li>
-                            <li><strong>争取推荐：</strong>优秀的塔罗师有机会成为首页推荐，获得更高的查看费用</li>
+                            <li><strong>争取推荐：</strong>优秀的塔罗师有机会成为推荐塔罗师，获得更高的查看费用和曝光</li>
                             <li><strong>保持活跃：</strong>定期更新资料，保持账户活跃状态</li>
+                            <li><strong>邀请新用户：</strong>通过邀请链接推广，获得邀请奖励</li>
                         </ol>
                     </div>
                 </div>

@@ -48,25 +48,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = '设置值无效';
         } else {
             try {
-                $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'new_user_tata_coin'", [$newUserCoin]);
-                $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'featured_reader_cost'", [$featuredCost]);
-                $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'normal_reader_cost'", [$normalCost]);
-                $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'reader_commission_rate'", [$commissionRate]);
+                $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'new_user_tata_coin'", [$newUserCoin]);
+                $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'featured_reader_cost'", [$featuredCost]);
+                $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'normal_reader_cost'", [$normalCost]);
+                $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'reader_commission_rate'", [$commissionRate]);
 
                 // 更新或插入邀请返点设置
-                $existingInvitationSetting = $db->fetchOne("SELECT * FROM site_settings WHERE setting_key = 'invitation_commission_rate'");
+                $existingInvitationSetting = $db->fetchOne("SELECT * FROM settings WHERE setting_key = 'invitation_commission_rate'");
                 if ($existingInvitationSetting) {
-                    $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'invitation_commission_rate'", [$invitationCommissionRate]);
+                    $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'invitation_commission_rate'", [$invitationCommissionRate]);
                 } else {
-                    $db->query("INSERT INTO site_settings (setting_key, setting_value, description) VALUES ('invitation_commission_rate', ?, '邀请返点比例（百分比）')", [$invitationCommissionRate]);
+                    $db->query("INSERT INTO settings (setting_key, setting_value, description) VALUES ('invitation_commission_rate', ?, '邀请返点比例（百分比）')", [$invitationCommissionRate]);
                 }
 
                 // 更新或插入塔罗师邀请返点设置
-                $existingReaderInvitationSetting = $db->fetchOne("SELECT * FROM site_settings WHERE setting_key = 'reader_invitation_commission_rate'");
+                $existingReaderInvitationSetting = $db->fetchOne("SELECT * FROM settings WHERE setting_key = 'reader_invitation_commission_rate'");
                 if ($existingReaderInvitationSetting) {
-                    $db->query("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'reader_invitation_commission_rate'", [$readerInvitationCommissionRate]);
+                    $db->query("UPDATE settings SET setting_value = ? WHERE setting_key = 'reader_invitation_commission_rate'", [$readerInvitationCommissionRate]);
                 } else {
-                    $db->query("INSERT INTO site_settings (setting_key, setting_value, description) VALUES ('reader_invitation_commission_rate', ?, '塔罗师邀请塔罗师返点比例（百分比）')", [$readerInvitationCommissionRate]);
+                    $db->query("INSERT INTO settings (setting_key, setting_value, description) VALUES ('reader_invitation_commission_rate', ?, '塔罗师邀请塔罗师返点比例（百分比）')", [$readerInvitationCommissionRate]);
                 }
 
                 $success = 'Tata Coin设置更新成功！';
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // 获取当前设置
 $settings = [];
-$settingsData = $db->fetchAll("SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('new_user_tata_coin', 'featured_reader_cost', 'normal_reader_cost', 'reader_commission_rate', 'invitation_commission_rate', 'reader_invitation_commission_rate')");
+$settingsData = $db->fetchAll("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ('new_user_tata_coin', 'featured_reader_cost', 'normal_reader_cost', 'reader_commission_rate', 'invitation_commission_rate', 'reader_invitation_commission_rate')");
 foreach ($settingsData as $setting) {
     // 邀请返点比例可能是小数，其他的是整数
     if (in_array($setting['setting_key'], ['invitation_commission_rate', 'reader_invitation_commission_rate'])) {

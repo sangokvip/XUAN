@@ -20,6 +20,12 @@ $featured_readers = getFeaturedReaders();
     <title><?php echo getSiteName(); ?> - <?php echo getSiteDescription(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/home.css">
+
+    <?php
+    // 输出等级标签CSS
+    require_once 'includes/level_badge.php';
+    outputLevelBadgeCSS();
+    ?>
 </head>
 <body class="home-page">
     <?php include 'includes/header.php'; ?>
@@ -68,7 +74,16 @@ $featured_readers = getFeaturedReaders();
                                 </div>
 
                                 <div class="reader-circle-info">
-                                    <h3 class="reader-name"><?php echo htmlspecialchars($reader['full_name']); ?></h3>
+                                    <h3 class="reader-name">
+                                        <?php echo htmlspecialchars($reader['full_name']); ?>
+                                        <?php
+                                        // 首页推荐塔罗师不显示"推荐塔罗师"标签，只显示普通塔罗师的标签
+                                        if (!$reader['is_featured']) {
+                                            require_once 'includes/level_badge.php';
+                                            echo getReaderLevelBadgeHTML('塔罗师', 'small');
+                                        }
+                                        ?>
+                                    </h3>
                                     <p class="reader-experience">从业 <?php echo htmlspecialchars($reader['experience_years']); ?> 年</p>
                                 </div>
                             </a>
