@@ -62,8 +62,8 @@ $pageTitle = '消息通知';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - 塔罗师后台</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/reader.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="../assets/css/reader-new.css?v=<?php echo time(); ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .messages-container {
@@ -269,12 +269,23 @@ $pageTitle = '消息通知';
 <body>
     <?php include '../includes/reader_header.php'; ?>
     
+    <!-- 移动端导航 -->
+    <div class="mobile-nav">
+        <?php include '../includes/reader_mobile_nav.php'; ?>
+    </div>
+
     <div class="reader-container">
         <div class="reader-sidebar">
-            <?php include '../includes/reader_sidebar.php'; ?>
+            <div class="reader-sidebar-header">
+                <h3>占卜师后台</h3>
+            </div>
+            <div class="reader-sidebar-nav">
+                <?php include '../includes/reader_sidebar.php'; ?>
+            </div>
         </div>
-        
+
         <div class="reader-content">
+            <div class="reader-content-inner">
             <div class="messages-container">
                 <div class="messages-header">
                     <h1>📢 消息通知</h1>
@@ -343,6 +354,7 @@ $pageTitle = '消息通知';
                 <?php endif; ?>
             </div>
         </div>
+    </div>
     </div>
     
     <footer class="reader-footer">

@@ -38,6 +38,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    elseif ($action === 'update_contact_settings') {
+        // 更新联系方式设置
+        $contactSettings = [
+            'contact_email_primary' => trim($_POST['contact_email_primary'] ?? ''),
+            'contact_email_support' => trim($_POST['contact_email_support'] ?? ''),
+            'contact_wechat_id' => trim($_POST['contact_wechat_id'] ?? ''),
+            'contact_wechat_hours' => trim($_POST['contact_wechat_hours'] ?? ''),
+            'contact_qq_main' => trim($_POST['contact_qq_main'] ?? ''),
+            'contact_qq_newbie' => trim($_POST['contact_qq_newbie'] ?? ''),
+            'contact_xiaohongshu' => trim($_POST['contact_xiaohongshu'] ?? ''),
+            'contact_xiaohongshu_desc' => trim($_POST['contact_xiaohongshu_desc'] ?? '')
+        ];
+
+        $updated = 0;
+        foreach ($contactSettings as $key => $value) {
+            if (setSetting($key, $value)) {
+                $updated++;
+            }
+        }
+
+        if ($updated > 0) {
+            $success = "已更新 {$updated} 项联系方式设置";
+        } else {
+            $error = '联系方式设置更新失败';
+        }
+    }
+
     elseif ($action === 'clear_cache') {
         // 清理缓存
         if (class_exists('SimpleCache')) {
@@ -262,6 +289,80 @@ if (is_dir($uploadDir)) {
                     </div>
                     
                     <button type="submit" class="btn btn-primary">保存设置</button>
+                </form>
+            </div>
+
+            <!-- 联系方式设置 -->
+            <div class="settings-section">
+                <h2>联系方式设置</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_contact_settings">
+
+                    <div class="setting-item">
+                        <div class="setting-label">主要联系邮箱</div>
+                        <div class="setting-control">
+                            <input type="email" name="contact_email_primary" value="<?php echo h(getSetting('contact_email_primary', 'info@example.com')); ?>" required>
+                        </div>
+                        <div class="setting-description">主要的联系邮箱地址</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">客服支持邮箱</div>
+                        <div class="setting-control">
+                            <input type="email" name="contact_email_support" value="<?php echo h(getSetting('contact_email_support', 'support@example.com')); ?>" required>
+                        </div>
+                        <div class="setting-description">客服支持邮箱地址</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">微信客服号</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_wechat_id" value="<?php echo h(getSetting('contact_wechat_id', 'mystical_service')); ?>">
+                        </div>
+                        <div class="setting-description">微信客服的微信号</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">微信客服工作时间</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_wechat_hours" value="<?php echo h(getSetting('contact_wechat_hours', '9:00-21:00')); ?>">
+                        </div>
+                        <div class="setting-description">微信客服的工作时间</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">官方QQ交流群</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_qq_main" value="<?php echo h(getSetting('contact_qq_main', '123456789')); ?>">
+                        </div>
+                        <div class="setting-description">官方QQ交流群号</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">新手学习QQ群</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_qq_newbie" value="<?php echo h(getSetting('contact_qq_newbie', '987654321')); ?>">
+                        </div>
+                        <div class="setting-description">新手学习QQ群号</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">小红书账号</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_xiaohongshu" value="<?php echo h(getSetting('contact_xiaohongshu', '@神秘学园')); ?>">
+                        </div>
+                        <div class="setting-description">小红书账号名称</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">小红书账号描述</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_xiaohongshu_desc" value="<?php echo h(getSetting('contact_xiaohongshu_desc', '每日分享占卜知识')); ?>">
+                        </div>
+                        <div class="setting-description">小红书账号的描述信息</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存联系方式</button>
                 </form>
             </div>
 

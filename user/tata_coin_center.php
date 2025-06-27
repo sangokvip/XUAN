@@ -2,6 +2,8 @@
 session_start();
 require_once '../config/config.php';
 require_once '../includes/TataCoinManager.php';
+require_once '../includes/CheckinManager.php';
+require_once '../includes/BrowseRewardManager.php';
 
 // 检查用户登录
 if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'user') {
@@ -11,6 +13,8 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_type'] !== 'user') {
 
 $userId = $_SESSION['user_id'];
 $tataCoinManager = new TataCoinManager();
+$checkinManager = new CheckinManager();
+$browseRewardManager = new BrowseRewardManager();
 
 // 获取用户信息
 $db = Database::getInstance();
@@ -21,33 +25,14 @@ $balance = $tataCoinManager->getBalance($userId, 'user');
 $levelInfo = $tataCoinManager->getUserLevel($userId, 'user');
 $dailyLimit = $tataCoinManager->getDailyEarningsLimit($userId, 'user');
 
-// 获取今日统计
-$today = date('Y-m-d');
-$todayCheckIn = $db->fetchOne(
-    "SELECT * FROM daily_check_ins WHERE user_id = ? AND check_in_date = ?",
-    [$userId, $today]
-);
+// 获取签到统计
+$checkinStats = $checkinManager->getCheckinStats($userId, 'user');
 
-$todayBrowseCount = $db->fetchOne(
-    "SELECT COUNT(*) as count FROM page_browse_rewards 
-     WHERE user_id = ? AND DATE(created_at) = ?",
-    [$userId, $today]
-)['count'];
+// 获取浏览奖励统计
+$browseStats = $browseRewardManager->getBrowseStats($userId, 'user');
 
 // 获取最近交易记录
 $recentTransactions = $tataCoinManager->getTransactionHistory($userId, 'user', 10);
-
-// 获取连续签到天数
-$lastCheckIn = $db->fetchOne(
-    "SELECT * FROM daily_check_ins WHERE user_id = ? ORDER BY check_in_date DESC LIMIT 1",
-    [$userId]
-);
-
-$consecutiveDays = 0;
-if ($lastCheckIn) {
-    if ($todayCheckIn) {
-        $consecutiveDays = $todayCheckIn['consecutive_days'];
-    } else {
         $lastDate = new DateTime($lastCheckIn['check_in_date']);
         $todayDate = new DateTime($today);
         $daysDiff = $todayDate->diff($lastDate)->days;
@@ -306,14 +291,15 @@ if ($lastCheckIn) {
             <div class="coin-card">
                 <div class="card-title">📅 每日签到</div>
                 <div class="checkin-section">
-                    <button id="daily-checkin-btn" class="checkin-btn">
-                        <?php echo $todayCheckIn ? '今日已签到' : '每日签到'; ?>
+                    <button id="daily-checkin-btn" class="checkin-btn <?php echo $checkinStats['checked_in_today'] ? 'checked-in' : ''; ?>"
+                            <?php echo $checkinStats['checked_in_today'] ? 'disabled' : ''; ?>>
+                        <?php echo $checkinStats['checked_in_today'] ? '今日已签到' : '每日签到'; ?>
                     </button>
-                    
+
                     <div class="streak-info">
                         <div id="checkin-streak">
-                            <?php if ($consecutiveDays > 0): ?>
-                                连续签到 <?php echo $consecutiveDays; ?> 天
+                            <?php if ($checkinStats['consecutive_days'] > 0): ?>
+                                连续签到 <?php echo $checkinStats['consecutive_days']; ?> 天
                             <?php else: ?>
                                 开始您的签到之旅
                             <?php endif; ?>
@@ -330,30 +316,43 @@ if ($lastCheckIn) {
                 <div class="card-title">📊 今日统计</div>
                 <div class="daily-stats">
                     <div class="stat-item">
-                        <div class="stat-number"><?php echo $todayCheckIn ? $todayCheckIn['reward_coins'] : 0; ?></div>
+                        <div class="stat-number" id="checkin-reward-today">
+                            <?php
+                            // 获取今日签到奖励
+                            $todayCheckinReward = 0;
+                            if ($checkinStats['checked_in_today']) {
+                                $todayCheckin = $db->fetchOne(
+                                    "SELECT reward_amount FROM daily_checkins WHERE user_id = ? AND checkin_date = ?",
+                                    [$userId, date('Y-m-d')]
+                                );
+                                $todayCheckinReward = $todayCheckin['reward_amount'] ?? 0;
+                            }
+                            echo $todayCheckinReward;
+                            ?>
+                        </div>
                         <div class="stat-label">签到奖励</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number"><?php echo $todayBrowseCount; ?></div>
+                        <div class="stat-number" id="browse-reward-today"><?php echo $browseStats['today_rewards']; ?></div>
                         <div class="stat-label">浏览奖励</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number"><?php echo $dailyLimit['today_earned']; ?></div>
-                        <div class="stat-label">今日收益</div>
+                        <div class="stat-number"><?php echo $browseStats['today_pages']; ?></div>
+                        <div class="stat-label">浏览页面</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-number"><?php echo $dailyLimit['remaining']; ?></div>
-                        <div class="stat-label">剩余额度</div>
+                        <div class="stat-number" id="browse-remaining"><?php echo $browseStats['today_remaining']; ?></div>
+                        <div class="stat-label">剩余奖励</div>
                     </div>
                 </div>
-                
+
                 <div style="margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; color: #666;">
-                        <span>今日收益进度</span>
-                        <span><?php echo $dailyLimit['today_earned']; ?>/<?php echo $dailyLimit['max_daily']; ?></span>
+                        <span>浏览奖励进度</span>
+                        <span><?php echo $browseStats['today_rewards']; ?>/<?php echo $browseStats['max_daily_rewards']; ?></span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: <?php echo min(100, ($dailyLimit['today_earned'] / $dailyLimit['max_daily']) * 100); ?>%"></div>
+                        <div class="progress-fill" style="width: <?php echo min(100, ($browseStats['today_rewards'] / $browseStats['max_daily_rewards']) * 100); ?>%"></div>
                     </div>
                 </div>
             </div>
@@ -420,7 +419,7 @@ if ($lastCheckIn) {
             <h4>💡 如何获得更多 Tata Coin？</h4>
             <ul>
                 <li><strong>每日签到：</strong>连续签到7天可获得57个Tata Coin</li>
-                <li><strong>浏览页面：</strong>每个页面停留5秒可获得1个Tata Coin（每日最多10个）</li>
+                <li><strong>浏览页面：</strong>每个页面停留5秒可获得1个Tata Coin（每日最多30个）</li>
                 <li><strong>完善资料：</strong>完善头像、性别等个人信息可获得20个Tata Coin</li>
                 <li><strong>邀请朋友：</strong>邀请朋友注册并首次消费可获得20个Tata Coin</li>
             </ul>
@@ -473,8 +472,111 @@ if ($lastCheckIn) {
         window.SITE_URL = '<?php echo SITE_URL; ?>';
         window.USER_ID = <?php echo $userId; ?>;
         window.USER_TYPE = 'user';
+
+        // 签到功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkinBtn = document.getElementById('daily-checkin-btn');
+
+            if (checkinBtn && !checkinBtn.disabled) {
+                checkinBtn.addEventListener('click', function() {
+                    performCheckin();
+                });
+            }
+        });
+
+        async function performCheckin() {
+            const checkinBtn = document.getElementById('daily-checkin-btn');
+            const originalText = checkinBtn.textContent;
+
+            checkinBtn.disabled = true;
+            checkinBtn.textContent = '签到中...';
+
+            try {
+                const response = await fetch('../api/checkin.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // 更新界面
+                    checkinBtn.textContent = '今日已签到';
+                    checkinBtn.classList.add('checked-in');
+
+                    // 更新连续签到天数
+                    const streakElement = document.getElementById('checkin-streak');
+                    if (streakElement) {
+                        streakElement.textContent = `连续签到 ${result.consecutive_days} 天`;
+                    }
+
+                    // 更新今日签到奖励
+                    const rewardElement = document.getElementById('checkin-reward-today');
+                    if (rewardElement) {
+                        rewardElement.textContent = result.reward;
+                    }
+
+                    // 显示成功消息
+                    showNotification(`签到成功！获得 ${result.reward} 个 Tata Coin`, 'success');
+
+                    // 刷新余额
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    checkinBtn.textContent = originalText;
+                    checkinBtn.disabled = false;
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                checkinBtn.textContent = originalText;
+                checkinBtn.disabled = false;
+                showNotification('签到失败，请稍后重试', 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 5px;
+                color: white;
+                font-weight: 500;
+                z-index: 10000;
+                opacity: 0;
+                transform: translateX(100%);
+                transition: all 0.3s ease;
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+            `;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
     </script>
     <script src="../assets/js/tata-coin-system.js"></script>
+    <script src="../assets/js/browse-reward.js"></script>
     
     <?php include '../includes/footer.php'; ?>
 </body>

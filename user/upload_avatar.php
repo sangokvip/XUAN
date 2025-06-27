@@ -51,44 +51,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($file['size'] > 5 * 1024 * 1024) { // 5MB
             $errors[] = '图片文件大小不能超过5MB';
         } else {
+            // 使用优化的图片上传
+            $uploadOptions = [
+                'max_width' => AVATAR_MAX_WIDTH,
+                'max_height' => AVATAR_MAX_HEIGHT,
+                'quality' => AVATAR_QUALITY,
+                'generate_thumbnails' => true,
+                'thumbnail_sizes' => [
+                    'small' => [80, 80],    // 小头像（列表显示）
+                    'medium' => [150, 150], // 中等头像（卡片显示）
+                    'large' => [300, 300]   // 大头像（详情页）
+                ],
+                'webp_support' => WEBP_ENABLED
+            ];
+
             // 创建上传目录
             $uploadDir = '../' . PHOTO_PATH;
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0777, true);
             }
-            
-            // 生成唯一文件名
-            $fileName = 'user_' . $userId . '_' . md5(uniqid() . time()) . '.' . $extension;
-            $targetPath = $uploadDir . $fileName;
-            
-            if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                chmod($targetPath, 0644);
-                
-                // 删除旧头像（如果不是默认头像）
-                if ($user['avatar'] && !str_contains($user['avatar'], 'img/n')) {
-                    $oldAvatarPath = '../' . $user['avatar'];
-                    if (file_exists($oldAvatarPath)) {
-                        unlink($oldAvatarPath);
-                    }
+
+            // 临时保存文件以便优化处理
+            $tempFileName = 'temp_user_' . $userId . '_' . md5(uniqid() . time()) . '.' . $extension;
+            $tempPath = $uploadDir . $tempFileName;
+
+            if (move_uploaded_file($file['tmp_name'], $tempPath)) {
+                // 使用优化上传函数
+                $tempFile = [
+                    'tmp_name' => $tempPath,
+                    'name' => 'user_' . $userId . '_' . md5(uniqid() . time()) . '.' . $extension,
+                    'size' => filesize($tempPath),
+                    'error' => UPLOAD_ERR_OK
+                ];
+
+                $uploadResult = uploadOptimizedImage($tempFile, PHOTO_PATH, $uploadOptions);
+
+                // 删除临时文件
+                if (file_exists($tempPath)) {
+                    unlink($tempPath);
                 }
-                
-                // 更新数据库
-                try {
-                    $db->update('users', [
-                        'avatar' => PHOTO_PATH . $fileName
-                    ], 'id = ?', [$userId]);
-                    
-                    $success = '头像上传成功！';
-                    
-                    // 重新获取用户信息
-                    $user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
-                    
-                } catch (Exception $e) {
-                    $errors[] = '头像更新失败，请稍后重试';
-                    // 删除已上传的文件
-                    if (file_exists($targetPath)) {
-                        unlink($targetPath);
+
+                if ($uploadResult['success']) {
+                    // 删除旧头像（如果不是默认头像）
+                    if ($user['avatar'] && !str_contains($user['avatar'], 'img/n')) {
+                        $oldAvatarPath = '../' . $user['avatar'];
+                        if (file_exists($oldAvatarPath)) {
+                            unlink($oldAvatarPath);
+                        }
+
+                        // 删除旧头像的缩略图和WebP版本
+                        $oldBaseName = pathinfo($user['avatar'], PATHINFO_FILENAME);
+                        $oldDir = '../' . dirname($user['avatar']) . '/';
+                        foreach (['small', 'medium', 'large'] as $size) {
+                            $oldThumb = $oldDir . $oldBaseName . '_' . $size . '.jpg';
+                            $oldWebp = $oldDir . $oldBaseName . '_' . $size . '.webp';
+                            if (file_exists($oldThumb)) unlink($oldThumb);
+                            if (file_exists($oldWebp)) unlink($oldWebp);
+                        }
                     }
+
+                    // 更新数据库
+                    try {
+                        $db->update('users', [
+                            'avatar' => PHOTO_PATH . $uploadResult['filename']
+                        ], 'id = ?', [$userId]);
+
+                        $success = '头像上传成功！图片已自动优化以提升加载速度。';
+
+                        // 重新获取用户信息
+                        $user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
+
+                    } catch (Exception $e) {
+                        $errors[] = '头像更新失败，请稍后重试';
+                        // 删除已上传的文件
+                        if (file_exists($uploadResult['path'])) {
+                            unlink($uploadResult['path']);
+                        }
+                    }
+                } else {
+                    $errors[] = '头像优化失败：' . $uploadResult['message'];
                 }
             } else {
                 $errors[] = '头像上传失败，请检查目录权限';
@@ -364,7 +405,10 @@ $pageTitle = '更换头像';
             <?php endif; ?>
             
             <div class="current-avatar">
-                <img src="../<?php echo h($user['avatar'] ?: 'img/nm.jpg'); ?>" alt="当前头像" id="currentAvatar">
+                <?php
+                $currentAvatarSrc = getUserAvatarUrl($user, '../');
+                ?>
+                <img src="<?php echo h($currentAvatarSrc); ?>" alt="当前头像" id="currentAvatar">
                 <p>当前头像</p>
             </div>
             

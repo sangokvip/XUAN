@@ -60,7 +60,7 @@ $recentLinks = $db->fetchAll(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>生成塔罗师注册链接 - 管理后台</title>
+    <title>生成占卜师注册链接 - 管理后台</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
 </head>
@@ -73,7 +73,7 @@ $recentLinks = $db->fetchAll(
         </div>
         
         <div class="admin-content">
-            <h1>生成塔罗师注册链接</h1>
+            <h1>生成占卜师注册链接</h1>
             
             <?php if ($error): ?>
                 <div class="alert alert-error"><?php echo h($error); ?></div>
@@ -102,7 +102,7 @@ $recentLinks = $db->fetchAll(
                 </div>
                 <div class="card-body">
                     <form method="POST">
-                        <p>点击下方按钮生成一个新的塔罗师注册链接，链接有效期为<?php echo REGISTRATION_LINK_HOURS; ?>小时。</p>
+                        <p>点击下方按钮生成一个新的占卜师注册链接，链接有效期为<?php echo REGISTRATION_LINK_HOURS; ?>小时。</p>
                         <button type="submit" class="btn btn-primary">生成注册链接</button>
                     </form>
                 </div>

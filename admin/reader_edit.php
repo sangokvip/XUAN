@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/DivinationConfig.php';
 
 // 检查管理员权限
 requireAdminLogin('../auth/admin_login.php');
@@ -9,14 +10,14 @@ $db = Database::getInstance();
 $success = '';
 $errors = [];
 
-// 获取塔罗师ID
+// 获取占卜师ID
 $readerId = (int)($_GET['id'] ?? 0);
 if (!$readerId) {
     header('Location: readers.php');
     exit;
 }
 
-// 获取塔罗师信息
+// 获取占卜师信息
 $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
 if (!$reader) {
     header('Location: readers.php');
@@ -43,7 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'custom_specialty' => trim($_POST['custom_specialty'] ?? ''),
         'is_active' => isset($_POST['is_active']) ? 1 : 0,
         'is_featured' => isset($_POST['is_featured']) ? 1 : 0,
-        'view_count' => max(0, (int)($_POST['view_count'] ?? $currentViewCount))
+        'view_count' => max(0, (int)($_POST['view_count'] ?? $currentViewCount)),
+        'nationality' => $_POST['nationality'] ?? '',
+        'divination_types' => $_POST['divination_types'] ?? [],
+        'primary_identity' => $_POST['primary_identity'] ?? ''
     ];
     
     // 处理擅长方向
@@ -90,6 +94,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
+    // 验证占卜类型选择
+    if (!empty($data['divination_types'])) {
+        $divinationValidation = DivinationConfig::validateDivinationSelection(
+            $data['divination_types'],
+            $data['primary_identity']
+        );
+
+        if (!$divinationValidation['valid']) {
+            $errors = array_merge($errors, $divinationValidation['errors']);
+        }
+    }
+
+    // 处理占卜类型数据
+    $divinationTypesJson = null;
+    $identityCategory = null;
+    if (!empty($data['divination_types'])) {
+        $divinationTypesJson = json_encode($data['divination_types']);
+
+        // 根据主要身份标签确定类别
+        if (!empty($data['primary_identity'])) {
+            $identityCategory = DivinationConfig::getDivinationCategory($data['primary_identity']);
+        }
+    }
+
     // 处理密码更新
     $updateData = [
         'username' => $data['username'],
@@ -100,7 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'specialties' => $specialtiesStr,
         'description' => $data['description'],
         'is_active' => $data['is_active'],
-        'is_featured' => $data['is_featured']
+        'is_featured' => $data['is_featured'],
+        'nationality' => $data['nationality'],
+        'divination_types' => $divinationTypesJson,
+        'primary_identity' => $data['primary_identity'],
+        'identity_category' => $identityCategory
     ];
     
     // 如果提供了新密码，则更新密码
@@ -171,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $db->update('readers', $updateData, 'id = ?', [$readerId]);
 
         if ($result) {
-            $success = '塔罗师信息更新成功！';
+            $success = '占卜师信息更新成功！';
             // 重新获取更新后的数据
             $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
             // 重新获取查看次数
@@ -191,9 +223,10 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>编辑塔罗师 - 管理后台</title>
+    <title>编辑占卜师 - 管理后台</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/divination-tags.css">
     <style>
         /* 一键选择按钮样式 */
         .specialty-quick-actions {
@@ -315,6 +348,292 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
             border: 2px solid #d4af37;
         }
 
+        /* 占卜类型选择区域样式修复 */
+        .divination-category {
+            margin-bottom: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .category-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .category-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .western-badge {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+        }
+
+        .eastern-badge {
+            background: linear-gradient(135deg, #374151, #4b5563);
+        }
+
+        .divination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .divination-card {
+            position: relative;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .divination-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .divination-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff, #e0e7ff);
+        }
+
+        .divination-card input[type="checkbox"] {
+            display: none;
+        }
+
+        .divination-text {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .primary-radio {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .divination-card.selected .primary-radio {
+            opacity: 1;
+        }
+
+        .primary-radio input[type="radio"] {
+            margin: 0;
+        }
+
+        .primary-radio label {
+            font-size: 0.8rem;
+            color: #667eea;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .divination-help {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        /* 状态设置区域样式修复 */
+        .form-section {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-section h3 {
+            margin: 0 0 20px 0;
+            color: #374151;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        /* 状态复选框样式 */
+        .status-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .checkbox-group {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-group:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #374151;
+            margin: 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        /* 密码更新区域样式 */
+        .password-section {
+            background: #fff8f0;
+            border: 2px solid #fbbf24;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .password-section h4 {
+            margin: 0 0 15px 0;
+            color: #92400e;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .password-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .password-fields .form-group {
+            margin-bottom: 0;
+        }
+
+        .password-fields input {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .password-fields input:focus {
+            border-color: #667eea;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* 表单按钮样式 */
+        .form-actions {
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 15px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+
+        /* 表单整体布局 */
+        .form-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .divination-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-checkboxes {
+                grid-template-columns: 1fr;
+            }
+
+            .password-fields {
+                grid-template-columns: 1fr;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .btn-primary, .btn-secondary {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .specialty-options {
@@ -345,7 +664,7 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
         
         <div class="admin-content">
             <div class="page-header">
-                <h1>编辑塔罗师 - <?php echo h($reader['full_name']); ?></h1>
+                <h1>编辑占卜师 - <?php echo h($reader['full_name']); ?></h1>
                 <div class="page-actions">
                     <a href="readers.php" class="btn btn-secondary">返回列表</a>
                 </div>
@@ -369,10 +688,11 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
 
             <div class="card">
                 <div class="card-header">
-                    <h2>塔罗师信息</h2>
+                    <h2>占卜师信息</h2>
                 </div>
                 <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data">
+                    <div class="form-container">
+                        <form method="POST" enctype="multipart/form-data">
                         <!-- 当前头像显示 -->
                         <?php if (!empty($reader['photo'])): ?>
                             <div class="current-photo">
@@ -406,7 +726,7 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                             <div class="form-group">
                                 <label for="full_name">昵称 *</label>
                                 <input type="text" id="full_name" name="full_name" required
-                                       placeholder="请输入塔罗师昵称"
+                                       placeholder="请输入占卜师昵称"
                                        value="<?php echo h($reader['full_name']); ?>">
                             </div>
                             
@@ -424,6 +744,23 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                                        value="<?php echo h($reader['experience_years']); ?>">
                             </div>
 
+                            <div class="form-group">
+                                <label for="nationality">国籍 *</label>
+                                <select id="nationality" name="nationality" required>
+                                    <option value="">请选择国籍</option>
+                                    <?php
+                                    $nationalities = DivinationConfig::getNationalities();
+                                    foreach ($nationalities as $code => $name):
+                                    ?>
+                                        <option value="<?php echo h($code); ?>" <?php echo $reader['nationality'] === $code ? 'selected' : ''; ?>>
+                                            <?php echo h($name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="view_count">查看次数</label>
                                 <input type="number" id="view_count" name="view_count" min="0"
@@ -468,46 +805,117 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                         
                         <div class="form-group">
                             <label for="description">个人简介</label>
-                            <textarea id="description" name="description" rows="4" 
-                                      placeholder="请简单介绍塔罗师的经历和服务特色"><?php echo h($reader['description']); ?></textarea>
+                            <textarea id="description" name="description" rows="4"
+                                      placeholder="请简单介绍占卜师的经历和服务特色"><?php echo h($reader['description']); ?></textarea>
                         </div>
-                        
-                        <!-- 状态设置 -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" name="is_active" value="1" <?php echo $reader['is_active'] ? 'checked' : ''; ?>>
-                                    激活状态
-                                </label>
+
+                        <!-- 占卜类型选择 -->
+                        <div class="form-section">
+                            <h3>🔮 占卜类型</h3>
+                            <p style="color: #6b7280; margin-bottom: 20px;">
+                                最多选择3项，其中1项作为主要身份标签
+                            </p>
+
+                            <?php
+                            $allDivinationTypes = DivinationConfig::getAllDivinationTypes();
+                            $selectedTypes = [];
+                            if (!empty($reader['divination_types'])) {
+                                $selectedTypes = json_decode($reader['divination_types'], true) ?: [];
+                            }
+                            $primaryIdentity = $reader['primary_identity'] ?? '';
+                            ?>
+
+                            <?php foreach ($allDivinationTypes as $category => $categoryData): ?>
+                                <div class="divination-category">
+                                    <h4 class="category-title <?php echo $category; ?>-category">
+                                        <?php echo h($categoryData['name']); ?>
+                                        <span class="category-badge <?php echo $category; ?>-badge"><?php echo $categoryData['color'] === 'purple' ? '紫' : '黑'; ?></span>
+                                    </h4>
+                                    <div class="divination-grid">
+                                        <?php foreach ($categoryData['types'] as $typeKey => $typeName): ?>
+                                            <div class="divination-card <?php echo in_array($typeKey, $selectedTypes) ? 'selected' : ''; ?>"
+                                                 onclick="toggleDivinationType(this, '<?php echo $typeKey; ?>')">
+                                                <input type="checkbox" name="divination_types[]" value="<?php echo h($typeKey); ?>"
+                                                       <?php echo in_array($typeKey, $selectedTypes) ? 'checked' : ''; ?>>
+                                                <span class="divination-text"><?php echo h($typeName); ?></span>
+                                                <div class="primary-radio">
+                                                    <input type="radio" name="primary_identity" value="<?php echo h($typeKey); ?>"
+                                                           <?php echo $primaryIdentity === $typeKey ? 'checked' : ''; ?>
+                                                           onclick="event.stopPropagation();">
+                                                    <label>主要</label>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <div class="divination-help">
+                                <small>
+                                    <strong>说明：</strong><br>
+                                    • 西玄占卜师标签为<span style="color: purple; font-weight: bold;">紫色</span><br>
+                                    • 东玄占卜师标签为<span style="color: black; font-weight: bold;">黑色</span><br>
+                                    • 主要身份标签将在占卜师的个人页面和列表中显示<br>
+                                    • 其他选择的类型将作为技能项展示
+                                </small>
                             </div>
-                            
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" name="is_featured" value="1" <?php echo $reader['is_featured'] ? 'checked' : ''; ?>>
-                                    推荐塔罗师
-                                </label>
+                        </div>
+
+                        <!-- 状态设置 -->
+                        <div class="form-section">
+                            <h3>⚙️ 状态设置</h3>
+                            <div class="status-checkboxes">
+                                <div class="checkbox-group">
+                                    <label>
+                                        <input type="checkbox" name="is_active" value="1" <?php echo $reader['is_active'] ? 'checked' : ''; ?>>
+                                        <span>激活状态</span>
+                                    </label>
+                                    <small style="color: #6b7280; margin-top: 5px; display: block;">
+                                        激活后占卜师可以正常使用平台功能
+                                    </small>
+                                </div>
+
+                                <div class="checkbox-group">
+                                    <label>
+                                        <input type="checkbox" name="is_featured" value="1" <?php echo $reader['is_featured'] ? 'checked' : ''; ?>>
+                                        <span>推荐占卜师</span>
+                                    </label>
+                                    <small style="color: #6b7280; margin-top: 5px; display: block;">
+                                        推荐占卜师将在首页显示
+                                    </small>
+                                </div>
                             </div>
                         </div>
                         
                         <!-- 密码更新 -->
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="password">新密码（留空则不修改）</label>
-                                <input type="password" id="password" name="password">
-                                <small>至少<?php echo PASSWORD_MIN_LENGTH; ?>个字符</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="confirm_password">确认新密码</label>
-                                <input type="password" id="confirm_password" name="confirm_password">
+                        <div class="password-section">
+                            <h4>🔐 密码更新</h4>
+                            <p style="color: #6b7280; margin-bottom: 20px;">
+                                如需修改密码请填写以下字段，留空则不修改密码
+                            </p>
+                            <div class="password-fields">
+                                <div class="form-group">
+                                    <label for="password">新密码</label>
+                                    <input type="password" id="password" name="password"
+                                           placeholder="请输入新密码">
+                                    <small style="color: #6b7280;">至少<?php echo PASSWORD_MIN_LENGTH; ?>个字符</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirm_password">确认新密码</label>
+                                    <input type="password" id="confirm_password" name="confirm_password"
+                                           placeholder="请再次输入新密码">
+                                    <small style="color: #6b7280;">必须与新密码一致</small>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">更新塔罗师信息</button>
+                            <button type="submit" class="btn btn-primary">更新占卜师信息</button>
                             <a href="readers.php" class="btn btn-secondary">取消</a>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -551,6 +959,101 @@ $currentSpecialties = !empty($reader['specialties']) ? explode('、', $reader['s
                 label.style.animationDelay = (index * 0.1) + 's';
                 label.style.animation = 'fadeInUp 0.5s ease forwards';
             });
+        });
+
+        // 占卜类型选择功能
+        function toggleDivinationType(card, typeKey) {
+            const checkbox = card.querySelector('input[type="checkbox"]');
+            const radio = card.querySelector('input[type="radio"]');
+
+            // 检查当前选择数量
+            const selectedCards = document.querySelectorAll('.divination-card.selected');
+
+            if (!checkbox.checked && selectedCards.length >= 3) {
+                alert('最多只能选择3种占卜类型');
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                // 如果是第一个选择的，自动设为主要身份
+                const checkedBoxes = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                if (checkedBoxes.length === 1) {
+                    radio.checked = true;
+                }
+            } else {
+                card.classList.remove('selected');
+                // 如果取消选择的是主要身份，清除主要身份选择
+                if (radio.checked) {
+                    radio.checked = false;
+                    // 自动选择第一个剩余的作为主要身份
+                    const remainingChecked = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                    if (remainingChecked.length > 0) {
+                        const firstRemaining = remainingChecked[0].closest('.divination-card').querySelector('input[type="radio"]');
+                        firstRemaining.checked = true;
+                    }
+                }
+            }
+        }
+
+        // 密码确认验证
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+
+        function validatePasswords() {
+            if (password.value && confirmPassword.value) {
+                if (password.value !== confirmPassword.value) {
+                    confirmPassword.setCustomValidity('密码不一致');
+                    confirmPassword.style.borderColor = '#dc3545';
+                } else {
+                    confirmPassword.setCustomValidity('');
+                    confirmPassword.style.borderColor = '#28a745';
+                }
+            } else {
+                confirmPassword.setCustomValidity('');
+                confirmPassword.style.borderColor = '#e5e7eb';
+            }
+        }
+
+        if (password && confirmPassword) {
+            password.addEventListener('input', validatePasswords);
+            confirmPassword.addEventListener('input', validatePasswords);
+        }
+
+        // 表单提交验证
+        document.querySelector('form').addEventListener('submit', function(e) {
+            // 检查占卜类型选择
+            const selectedDivinationTypes = document.querySelectorAll('input[name="divination_types[]"]:checked');
+            if (selectedDivinationTypes.length === 0) {
+                e.preventDefault();
+                alert('请至少选择一种占卜类型');
+                return false;
+            }
+
+            if (selectedDivinationTypes.length > 3) {
+                e.preventDefault();
+                alert('最多只能选择3种占卜类型');
+                return false;
+            }
+
+            // 检查是否选择了主要身份标签
+            const primaryIdentity = document.querySelector('input[name="primary_identity"]:checked');
+            if (!primaryIdentity) {
+                e.preventDefault();
+                alert('请选择一个主要身份标签');
+                return false;
+            }
+
+            // 检查密码
+            if (password.value && password.value !== confirmPassword.value) {
+                e.preventDefault();
+                alert('两次输入的密码不一致');
+                return false;
+            }
+
+            return true;
         });
 
         // CSS动画

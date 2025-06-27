@@ -15,7 +15,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
             <a href="<?php echo SITE_URL; ?>/admin/readers.php" 
                class="<?php echo $current_page === 'readers.php' ? 'active' : ''; ?>">
                 <span class="icon">🔮</span>
-                塔罗师管理
+                占卜师管理
             </a>
         </li>
         <li>
@@ -30,6 +30,20 @@ $current_page = basename($_SERVER['PHP_SELF']);
                class="<?php echo in_array($current_page, ['tata_coin.php', 'tata_coin_transactions.php']) ? 'active' : ''; ?>">
                 <span class="icon">💰</span>
                 Tata Coin管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/checkin_records.php"
+               class="<?php echo $current_page === 'checkin_records.php' ? 'active' : ''; ?>">
+                <span class="icon">📅</span>
+                签到记录管理
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/browse_records.php"
+               class="<?php echo $current_page === 'browse_records.php' ? 'active' : ''; ?>">
+                <span class="icon">👀</span>
+                浏览记录统计
             </a>
         </li>
         <li>
@@ -68,10 +82,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
+            <a href="<?php echo SITE_URL; ?>/admin/image_optimizer.php"
+               class="<?php echo $current_page === 'image_optimizer.php' ? 'active' : ''; ?>">
+                <span class="icon">🖼️</span>
+                图片优化管理
+            </a>
+        </li>
+        <li>
             <a href="<?php echo SITE_URL; ?>/admin/database_update.php"
                class="<?php echo $current_page === 'database_update.php' ? 'active' : ''; ?>">
                 <span class="icon">🔧</span>
                 数据库更新
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/admin/email_test.php"
+               class="<?php echo $current_page === 'email_test.php' ? 'active' : ''; ?>">
+                <span class="icon">📧</span>
+                邮件服务测试
             </a>
         </li>
         <li>

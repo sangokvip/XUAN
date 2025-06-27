@@ -5,8 +5,9 @@ require_once '../includes/ReviewManager.php';
 
 header('Content-Type: application/json');
 
-// 检查用户登录
-if (!isset($_SESSION['user_id'])) {
+// 检查用户登录（普通用户或管理员）
+$isAdmin = isset($_SESSION['admin_id']);
+if (!isset($_SESSION['user_id']) && !$isAdmin) {
     echo json_encode(['success' => false, 'message' => '请先登录']);
     exit;
 }
@@ -26,7 +27,8 @@ if (!isset($input['review_id']) || !is_numeric($input['review_id'])) {
 }
 
 $reviewId = (int)$input['review_id'];
-$userId = $_SESSION['user_id'];
+// 获取当前用户ID（普通用户或管理员）
+$userId = $_SESSION['user_id'] ?? $_SESSION['admin_id'];
 
 try {
     $reviewManager = new ReviewManager();

@@ -4,36 +4,13 @@
  * 用于将现有系统升级到新的Tata Coin经济体系
  */
 
-// 避免重复启动session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once 'config/config.php';
 
-// 调试信息：显示当前session状态
-echo "<h2>Session 调试信息</h2>";
-echo "<p>Session ID: " . session_id() . "</p>";
-echo "<p>Session 数据：</p>";
-echo "<pre>" . print_r($_SESSION, true) . "</pre>";
-
 // 检查是否为管理员访问
-if (!isset($_SESSION['admin_id']) || empty($_SESSION['admin_id'])) {
-    echo '<h2>权限错误</h2>';
-    echo '<p>需要管理员权限才能执行此操作。</p>';
-    echo '<p>请先<a href="auth/admin_login.php">登录管理员账户</a>。</p>';
-    echo '<p>当前Session状态：' . (isset($_SESSION['admin_id']) ? '已设置admin_id但值为: ' . $_SESSION['admin_id'] : '未设置admin_id') . '</p>';
-
-    // 检查其他可能的管理员session变量
-    if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'admin') {
-        echo '<p>检测到user_type为admin，但admin_id未设置。这可能是session设置问题。</p>';
-    }
-
-    exit;
+session_start();
+if (!isset($_SESSION['admin_id'])) {
+    die('需要管理员权限才能执行此操作');
 }
-
-echo "<p>✅ 管理员权限验证通过，管理员ID: " . $_SESSION['admin_id'] . "</p>";
-echo "<hr>";
 
 $success = [];
 $errors = [];

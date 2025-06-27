@@ -3,6 +3,7 @@ session_start();
 require_once '../config/config.php';
 require_once '../includes/TataCoinManager.php';
 require_once '../includes/MessageManager.php';
+// CheckinManager 已简化，直接使用数据库查询
 
 // 检查用户登录
 requireLogin('../auth/login.php');
@@ -10,6 +11,7 @@ requireLogin('../auth/login.php');
 $db = Database::getInstance();
 $tataCoinManager = new TataCoinManager();
 $messageManager = new MessageManager();
+// 直接查询签到统计
 
 $userId = $_SESSION['user_id'];
 $user = $db->fetchOne("SELECT * FROM users WHERE id = ?", [$userId]);
@@ -37,6 +39,18 @@ try {
 } catch (Exception $e) {
     // 忽略错误
 }
+
+// 获取签到统计
+$today = date('Y-m-d');
+$todayCheckin = $db->fetchOne(
+    "SELECT consecutive_days FROM daily_checkins WHERE user_id = ? AND user_type = 'user' AND checkin_date = ?",
+    [$userId, $today]
+);
+
+$checkinStats = [
+    'checked_in_today' => !empty($todayCheckin),
+    'consecutive_days' => $todayCheckin['consecutive_days'] ?? 0
+];
 
 $pageTitle = '用户中心';
 ?>
@@ -118,7 +132,116 @@ $pageTitle = '用户中心';
             color: rgba(255, 255, 255, 0.8);
             margin: 0;
         }
-        
+
+        /* 每日签到样式 */
+        .daily-checkin-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .checkin-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .checkin-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .checkin-icon {
+            font-size: 1.5rem;
+        }
+
+        .checkin-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .checkin-content {
+            text-align: center;
+        }
+
+        .checkin-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            margin-bottom: 15px;
+        }
+
+        .checkin-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .checkin-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .checkin-btn.checked-in {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+            cursor: not-allowed;
+        }
+
+        .checkin-info {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .streak-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .reward-hint {
+            font-size: 0.85rem;
+            opacity: 0.8;
+        }
+
+        /* 移动端签到样式 */
+        @media (max-width: 768px) {
+            .daily-checkin-section {
+                margin-top: 15px;
+                padding-top: 15px;
+            }
+
+            .checkin-card {
+                padding: 15px;
+            }
+
+            .checkin-header h3 {
+                font-size: 1.1rem;
+            }
+
+            .checkin-btn {
+                padding: 10px 25px;
+                font-size: 0.9rem;
+            }
+
+            .streak-text {
+                font-size: 1rem;
+            }
+
+            .reward-hint {
+                font-size: 0.8rem;
+            }
+        }
+
         /* 横向卡片布局 */
         .dashboard-section {
             background: white;
@@ -301,14 +424,7 @@ $pageTitle = '用户中心';
         <div class="user-header">
             <div class="user-info">
                 <?php
-                $avatarPath = '';
-                if (!empty($user['avatar'])) {
-                    // 如果用户有自定义头像
-                    $avatarPath = '../' . $user['avatar'];
-                } else {
-                    // 使用默认头像
-                    $avatarPath = ($user['gender'] === 'female') ? '../img/nf.jpg' : '../img/nm.jpg';
-                }
+                $avatarPath = getUserAvatarUrl($user, '../');
                 ?>
                 <img src="<?php echo h($avatarPath); ?>"
                      alt="用户头像" class="user-avatar"
@@ -323,6 +439,32 @@ $pageTitle = '用户中心';
                 <div class="tata-coin-display">
                     <div class="tata-coin-amount"><?php echo number_format($tataCoinBalance); ?></div>
                     <div class="tata-coin-label">Tata Coin</div>
+                </div>
+            </div>
+
+            <!-- 每日签到区域 -->
+            <div class="daily-checkin-section">
+                <div class="checkin-card">
+                    <div class="checkin-header">
+                        <span class="checkin-icon">📅</span>
+                        <h3>每日签到</h3>
+                    </div>
+                    <div class="checkin-content">
+                        <button id="daily-checkin-btn" class="checkin-btn <?php echo $checkinStats['checked_in_today'] ? 'checked-in' : ''; ?>"
+                                <?php echo $checkinStats['checked_in_today'] ? 'disabled' : ''; ?>>
+                            <?php echo $checkinStats['checked_in_today'] ? '今日已签到' : '每日签到'; ?>
+                        </button>
+                        <div class="checkin-info">
+                            <div id="checkin-streak" class="streak-text">
+                                <?php if ($checkinStats['consecutive_days'] > 0): ?>
+                                    连续签到 <?php echo $checkinStats['consecutive_days']; ?> 天
+                                <?php else: ?>
+                                    开始您的签到之旅
+                                <?php endif; ?>
+                            </div>
+                            <div class="reward-hint">连续签到7天可获得57个Tata Coin</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -427,19 +569,12 @@ $pageTitle = '用户中心';
                     <?php foreach ($recentBrowseHistory as $history): ?>
                         <div class="list-item">
                             <?php
-                            $readerAvatar = '';
-                            if (!empty($history['photo_circle'])) {
-                                $readerAvatar = '../' . $history['photo_circle'];
-                            } elseif (!empty($history['photo'])) {
-                                $readerAvatar = '../' . $history['photo'];
-                            } else {
-                                $readerAvatar = '../img/tm.jpg';
-                            }
+                            $readerAvatar = getReaderPhotoUrl($history, true, '../');
                             ?>
                             <img src="<?php echo h($readerAvatar); ?>"
                                  alt="<?php echo h($history['full_name']); ?>"
                                  class="list-avatar"
-                                 onerror="this.src='../img/tm.jpg'">
+                                 onerror="this.src='<?php echo ($history['gender'] === 'female') ? '../img/f1.jpg' : '../img/m1.jpg'; ?>'">
                             <div class="list-content">
                                 <div class="list-title">
                                     <?php echo h($history['full_name']); ?>
@@ -478,5 +613,123 @@ $pageTitle = '用户中心';
     </div>
 
     <?php include '../includes/footer.php'; ?>
+
+    <script>
+        // 每日签到功能
+        async function performCheckin() {
+            const checkinBtn = document.getElementById('daily-checkin-btn');
+            const originalText = checkinBtn.textContent;
+
+            checkinBtn.disabled = true;
+            checkinBtn.textContent = '签到中...';
+
+            try {
+                console.log('开始签到请求...');
+                const response = await fetch('../api/checkin.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                console.log('签到响应状态:', response.status);
+
+                const responseText = await response.text();
+                console.log('签到响应原始内容:', responseText);
+
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                    console.log('签到解析结果:', result);
+                } catch (parseError) {
+                    console.error('JSON解析失败:', parseError);
+                    throw new Error('服务器返回了无效的JSON: ' + responseText.substring(0, 100));
+                }
+
+                if (result.success) {
+                    // 签到成功
+                    checkinBtn.textContent = '今日已签到';
+                    checkinBtn.classList.add('checked-in');
+                    checkinBtn.disabled = true;
+
+                    // 更新连续签到天数
+                    const streakText = document.getElementById('checkin-streak');
+                    if (streakText) {
+                        streakText.textContent = `连续签到 ${result.consecutive_days} 天`;
+                    }
+
+                    // 显示成功消息
+                    showNotification(result.message, 'success');
+
+                    // 刷新页面以更新Tata币余额
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    // 签到失败
+                    checkinBtn.textContent = originalText;
+                    checkinBtn.disabled = false;
+                    showNotification(result.message, 'error');
+                }
+
+            } catch (error) {
+                console.error('签到请求失败:', error);
+                checkinBtn.textContent = originalText;
+                checkinBtn.disabled = false;
+                showNotification('签到失败：' + error.message, 'error');
+            }
+        }
+
+        // 通知函数
+        function showNotification(message, type) {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 600;
+                z-index: 10000;
+                max-width: 300px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+
+            if (type === 'success') {
+                notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            } else {
+                notification.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+            }
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // 显示动画
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+
+            // 自动隐藏
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // 绑定签到按钮事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkinBtn = document.getElementById('daily-checkin-btn');
+            if (checkinBtn && !checkinBtn.disabled) {
+                checkinBtn.addEventListener('click', performCheckin);
+            }
+        });
+    </script>
 </body>
 </html>

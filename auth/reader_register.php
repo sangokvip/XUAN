@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/DivinationConfig.php';
 
 $errors = [];
 $success = '';
@@ -54,7 +55,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'phone' => trim($_POST['phone'] ?? ''),
         'gender' => $_POST['gender'] ?? '',
         'experience_years' => (int)($_POST['experience_years'] ?? 0),
-        'description' => trim($_POST['description'] ?? '')
+        'description' => trim($_POST['description'] ?? ''),
+        'nationality' => $_POST['nationality'] ?? '',
+        'divination_types' => $_POST['divination_types'] ?? [],
+        'primary_identity' => $_POST['primary_identity'] ?? '',
+        // 联系方式字段
+        'wechat' => trim($_POST['wechat'] ?? ''),
+        'qq' => trim($_POST['qq'] ?? ''),
+        'xiaohongshu' => trim($_POST['xiaohongshu'] ?? ''),
+        'weibo' => trim($_POST['weibo'] ?? ''),
+        'other_contact' => trim($_POST['other_contact'] ?? ''),
+        'contact_info' => trim($_POST['contact_info'] ?? '')
     ];
 
     // 处理占卜方向
@@ -93,17 +104,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $data['specialties'] = implode('、', $specialties);
 
+    // 验证占卜类型选择
+    $divinationValidation = DivinationConfig::validateDivinationSelection(
+        $data['divination_types'],
+        $data['primary_identity']
+    );
+
+    if (!$divinationValidation['valid']) {
+        $errors = array_merge($errors, $divinationValidation['errors']);
+    }
+
     // 验证数据
     if (empty($data['username']) || empty($data['email']) || empty($data['password']) ||
-        empty($data['full_name']) || empty($specialties)) {
+        empty($data['full_name']) || empty($specialties) || empty($data['nationality']) ||
+        empty($data['divination_types']) || empty($data['primary_identity'])) {
         $errors[] = '请填写所有必填字段';
     }
 
     // 检查是否使用默认头像
     $useDefaultAvatar = isset($_POST['use_default_avatar']) && $_POST['use_default_avatar'] === '1';
 
-    if (!$useDefaultAvatar && (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK)) {
-        $errors[] = '请上传头像照片或选择使用默认头像';
+    if ($useDefaultAvatar) {
+        // 如果使用默认头像，检查是否选择了具体的头像
+        $selectedDefaultAvatar = $_POST['selected_default_avatar'] ?? '';
+        if (empty($selectedDefaultAvatar)) {
+            $errors[] = '请选择一个默认头像';
+        }
+    } else {
+        // 如果不使用默认头像，检查是否上传了文件
+        if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            $errors[] = '请上传头像照片或选择使用默认头像';
+        }
     }
 
     if ($data['password'] !== $data['confirm_password']) {
@@ -122,12 +153,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = '从业年数至少为1年';
     }
 
+    // 验证联系方式（至少填写一项）
+    $contactFields = ['wechat', 'qq', 'xiaohongshu', 'weibo', 'other_contact'];
+    $hasContact = false;
+    foreach ($contactFields as $field) {
+        if (!empty($_POST[$field])) {
+            $hasContact = true;
+            break;
+        }
+    }
+
+    if (!$hasContact) {
+        $errors[] = '请至少填写一种联系方式';
+    }
+
     // 如果没有错误，处理注册
     if (empty($errors)) {
         // 处理头像
         if ($useDefaultAvatar) {
-            // 使用默认头像
-            $data['photo'] = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+            // 使用选择的默认头像
+            $selectedDefaultAvatar = $_POST['selected_default_avatar'] ?? '';
+            if (!empty($selectedDefaultAvatar)) {
+                // 验证选择的头像是否有效
+                $validAvatars = [
+                    '../img/m1.jpg', '../img/m2.jpg', '../img/m3.jpg', '../img/m4.jpg',
+                    '../img/f1.jpg', '../img/f2.jpg', '../img/f3.jpg', '../img/f4.jpg'
+                ];
+                if (in_array($selectedDefaultAvatar, $validAvatars)) {
+                    $data['photo'] = $selectedDefaultAvatar;
+                } else {
+                    // 如果选择的头像无效，使用第一个默认头像
+                    $data['photo'] = $data['gender'] === 'male' ? '../img/m1.jpg' : '../img/f1.jpg';
+                }
+            } else {
+                // 如果没有选择具体头像，使用第一个默认头像
+                $data['photo'] = $data['gender'] === 'male' ? '../img/m1.jpg' : '../img/f1.jpg';
+            }
 
             // 优先使用管理员token，如果没有则使用邀请token
             $registrationToken = !empty($token) ? $token : null;
@@ -218,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>塔罗师注册 - <?php echo getSiteName(); ?></title>
+    <title>占卜师注册 - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/image-cropper.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -466,6 +527,127 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .crop-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        /* 头像选择区域样式 */
+        .avatar-choice-section {
+            margin-top: 15px;
+        }
+
+        .avatar-choice-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .avatar-tab {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: #f1f5f9;
+            color: #64748b;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .avatar-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .avatar-tab:hover:not(.active) {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .avatar-section {
+            display: none;
+        }
+
+        .avatar-section.active {
+            display: block;
+        }
+
+        .default-avatars-grid {
+            text-align: center;
+        }
+
+        .avatar-hint {
+            color: #6b7280;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .gender-avatars {
+            margin-bottom: 25px;
+        }
+
+        .gender-avatars h4 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .avatars-row {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .avatar-option {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .avatar-option:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .avatar-option.selected {
+            border-color: #10b981;
+            box-shadow: 0 0 0 2px #10b981;
+        }
+
+        .avatar-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-option img:not([src]),
+        .avatar-option img[src=""] {
+            display: none;
+        }
+
+        .avatar-option.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #10b981;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
         }
 
         /* 专长选择区域美化 */
@@ -787,14 +969,122 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .specialty-card:nth-child(5) { animation-delay: 0.3s; }
         .specialty-card:nth-child(6) { animation-delay: 0.35s; }
         .specialty-card:nth-child(7) { animation-delay: 0.4s; }
+
+        /* 占卜类型选择样式 */
+        .divination-section {
+            margin-top: 20px;
+        }
+
+        .divination-category {
+            margin-bottom: 30px;
+        }
+
+        .category-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .category-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .western-badge {
+            background: linear-gradient(135deg, #8b5cf6, #a855f7);
+        }
+
+        .eastern-badge {
+            background: linear-gradient(135deg, #374151, #4b5563);
+        }
+
+        .divination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .divination-card {
+            position: relative;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .divination-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .divination-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff, #e0e7ff);
+        }
+
+        .divination-card input[type="checkbox"] {
+            display: none;
+        }
+
+        .divination-text {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .primary-radio {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .divination-card.selected .primary-radio {
+            opacity: 1;
+        }
+
+        .primary-radio input[type="radio"] {
+            margin: 0;
+        }
+
+        .primary-radio label {
+            font-size: 0.8rem;
+            color: #667eea;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .divination-help {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
     </style>
 </head>
 <body class="auth-page">
     <div class="auth-container">
         <div class="auth-form">
             <div class="register-header">
-                <h1>✨ 塔罗师注册</h1>
-                <p>加入我们的专业塔罗师团队，开启您的占卜之旅</p>
+                <h1>✨ 占卜师注册</h1>
+<parameter name="p">加入我们的专业占卜师团队，开启您的占卜之旅</p>
             </div>
 
             <div class="register-content">
@@ -821,13 +1111,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="photo-upload-section">
                             <div class="form-group">
                                 <label for="photo">头像照片 <span class="required-mark">*</span></label>
-                                <div class="photo-upload-controls">
-                                    <input type="file" id="photo" name="photo" accept="image/*" required>
-                                    <button type="button" id="use-default-avatar-btn" class="default-avatar-btn">使用系统默认头像</button>
+
+                                <!-- 头像选择方式 -->
+                                <div class="avatar-choice-section">
+                                    <div class="avatar-choice-tabs">
+                                        <button type="button" id="upload-tab" class="avatar-tab active">上传头像</button>
+                                        <button type="button" id="default-tab" class="avatar-tab">选择默认头像</button>
+                                    </div>
+
+                                    <!-- 上传头像区域 -->
+                                    <div id="upload-section" class="avatar-section active">
+                                        <div class="photo-upload-controls">
+                                            <input type="file" id="photo" name="photo" accept="image/*" required>
+                                        </div>
+                                        <small>请上传清晰的个人照片，支持JPG、PNG格式，文件大小不超过5MB。上传后可以剪裁圆形头像用于首页展示。</small>
+                                    </div>
+
+                                    <!-- 默认头像选择区域 -->
+                                    <div id="default-section" class="avatar-section">
+                                        <div class="default-avatars-grid">
+                                            <p class="avatar-hint">请选择一个默认头像：</p>
+
+                                            <div class="all-avatars" style="display: block;">
+                                                <h4>男性头像</h4>
+                                                <div class="avatars-row">
+                                                    <div class="avatar-option" data-avatar="../img/m1.jpg">
+                                                        <img src="../img/m1.jpg" alt="男性头像1">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/m2.jpg">
+                                                        <img src="../img/m2.jpg" alt="男性头像2">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/m3.jpg">
+                                                        <img src="../img/m3.jpg" alt="男性头像3">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/m4.jpg">
+                                                        <img src="../img/m4.jpg" alt="男性头像4">
+                                                    </div>
+                                                </div>
+
+                                                <h4 style="margin-top: 20px;">女性头像</h4>
+                                                <div class="avatars-row">
+                                                    <div class="avatar-option" data-avatar="../img/f1.jpg">
+                                                        <img src="../img/f1.jpg" alt="女性头像1">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/f2.jpg">
+                                                        <img src="../img/f2.jpg" alt="女性头像2">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/f3.jpg">
+                                                        <img src="../img/f3.jpg" alt="女性头像3">
+                                                    </div>
+                                                    <div class="avatar-option" data-avatar="../img/f4.jpg">
+                                                        <img src="../img/f4.jpg" alt="女性头像4">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <small>选择一个默认头像作为您的占卜师头像。</small>
+                                    </div>
                                 </div>
+
                                 <input type="hidden" id="photo_circle_data" name="photo_circle_data">
                                 <input type="hidden" id="use_default_avatar" name="use_default_avatar" value="0">
-                                <small>请上传清晰的个人照片，支持JPG、PNG格式，文件大小不超过5MB。上传后可以剪裁圆形头像用于首页展示。</small>
+                                <input type="hidden" id="selected_default_avatar" name="selected_default_avatar" value="">
 
                                 <div class="photo-previews" id="photo-previews" style="display: none;">
                                     <div class="photo-preview">
@@ -864,9 +1209,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
 
                             <div class="form-group">
-                                <label for="full_name">塔罗师昵称 <span class="required-mark">*</span></label>
+                                <label for="full_name">占卜师昵称 <span class="required-mark">*</span></label>
                                 <input type="text" id="full_name" name="full_name" required
-                                       placeholder="请输入您的塔罗师昵称"
+                                       placeholder="请输入您的占卜师昵称"
                                        value="<?php echo h($_POST['full_name'] ?? ''); ?>">
                             </div>
 
@@ -891,6 +1236,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
                                        placeholder="请输入从业年数"
                                        value="<?php echo h($_POST['experience_years'] ?? ''); ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="nationality">国籍 <span class="required-mark">*</span></label>
+                                <select id="nationality" name="nationality" required>
+                                    <option value="">请选择国籍</option>
+                                    <?php
+                                    $nationalities = DivinationConfig::getNationalities();
+                                    $selectedNationality = $_POST['nationality'] ?? '';
+                                    foreach ($nationalities as $code => $name):
+                                    ?>
+                                        <option value="<?php echo h($code); ?>" <?php echo $selectedNationality === $code ? 'selected' : ''; ?>>
+                                            <?php echo h($name); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -941,14 +1302,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- 占卜类型选择 -->
+                    <div class="form-section">
+                        <h3 class="section-title">🔮 占卜类型</h3>
+                        <div class="divination-section">
+                            <label>占卜类型 <span class="required-mark">*</span> (最多选择3项，其中1项作为主要身份标签)</label>
+
+                            <?php
+                            $allDivinationTypes = DivinationConfig::getAllDivinationTypes();
+                            $selectedTypes = $_POST['divination_types'] ?? [];
+                            $primaryIdentity = $_POST['primary_identity'] ?? '';
+                            ?>
+
+                            <?php foreach ($allDivinationTypes as $category => $categoryData): ?>
+                                <div class="divination-category">
+                                    <h4 class="category-title <?php echo $category; ?>-category">
+                                        <?php echo h($categoryData['name']); ?>
+                                        <span class="category-badge <?php echo $category; ?>-badge"><?php echo $categoryData['color'] === 'purple' ? '紫' : '黑'; ?></span>
+                                    </h4>
+                                    <div class="divination-grid">
+                                        <?php foreach ($categoryData['types'] as $typeKey => $typeName): ?>
+                                            <div class="divination-card <?php echo in_array($typeKey, $selectedTypes) ? 'selected' : ''; ?>"
+                                                 onclick="toggleDivinationType(this, '<?php echo $typeKey; ?>')">
+                                                <input type="checkbox" name="divination_types[]" value="<?php echo h($typeKey); ?>"
+                                                       <?php echo in_array($typeKey, $selectedTypes) ? 'checked' : ''; ?>>
+                                                <span class="divination-text"><?php echo h($typeName); ?></span>
+                                                <div class="primary-radio">
+                                                    <input type="radio" name="primary_identity" value="<?php echo h($typeKey); ?>"
+                                                           <?php echo $primaryIdentity === $typeKey ? 'checked' : ''; ?>
+                                                           onclick="event.stopPropagation();">
+                                                    <label>主要</label>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+
+                            <div class="divination-help">
+                                <small>
+                                    <strong>说明：</strong><br>
+                                    • 西玄占卜师标签为<span style="color: purple; font-weight: bold;">紫色</span><br>
+                                    • 东玄占卜师标签为<span style="color: black; font-weight: bold;">黑色</span><br>
+                                    • 主要身份标签将在您的个人页面和列表中显示<br>
+                                    • 其他选择的类型将作为技能项展示
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 个人简介 -->
                     <div class="form-section">
                         <h3 class="section-title">📝 个人简介</h3>
                         <div class="form-group">
                             <label for="description">个人简介</label>
                             <textarea id="description" name="description" rows="4"
-                                      placeholder="请简单介绍您的塔罗经历和服务特色，让用户更好地了解您"><?php echo h($_POST['description'] ?? ''); ?></textarea>
+                                      placeholder="请简单介绍您的占卜经历和服务特色，让用户更好地了解您"><?php echo h($_POST['description'] ?? ''); ?></textarea>
                             <small>简介将显示在您的个人页面，帮助用户了解您的专业背景</small>
                         </div>
                     </div>
@@ -969,6 +1379,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input type="password" id="confirm_password" name="confirm_password" required
                                        placeholder="请再次输入密码">
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 联系方式设置 -->
+                    <div class="form-section">
+                        <h3 class="section-title">📞 联系方式</h3>
+                        <p class="section-description">请至少填写一种联系方式，用户查看后可以通过这些方式联系您</p>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="wechat">微信号</label>
+                                <input type="text" id="wechat" name="wechat"
+                                       placeholder="请输入微信号"
+                                       value="<?php echo h($_POST['wechat'] ?? ''); ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="qq">QQ号</label>
+                                <input type="text" id="qq" name="qq"
+                                       placeholder="请输入QQ号"
+                                       value="<?php echo h($_POST['qq'] ?? ''); ?>">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="xiaohongshu">小红书</label>
+                                <input type="text" id="xiaohongshu" name="xiaohongshu"
+                                       placeholder="请输入小红书账号"
+                                       value="<?php echo h($_POST['xiaohongshu'] ?? ''); ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="weibo">微博</label>
+                                <input type="text" id="weibo" name="weibo"
+                                       placeholder="请输入微博账号"
+                                       value="<?php echo h($_POST['weibo'] ?? ''); ?>">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="other_contact">其他联系方式</label>
+                                <input type="text" id="other_contact" name="other_contact"
+                                       placeholder="请输入其他联系方式"
+                                       value="<?php echo h($_POST['other_contact'] ?? ''); ?>">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contact_info">联系信息描述</label>
+                            <textarea id="contact_info" name="contact_info" rows="3"
+                                      placeholder="请简单介绍您的服务时间、预约方式等信息"><?php echo h($_POST['contact_info'] ?? ''); ?></textarea>
+                            <small>例如：工作时间9:00-21:00，请提前预约</small>
                         </div>
                     </div>
 
@@ -1018,6 +1482,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
         }
 
+        // 占卜类型选择功能
+        function toggleDivinationType(card, typeKey) {
+            const checkbox = card.querySelector('input[type="checkbox"]');
+            const radio = card.querySelector('input[type="radio"]');
+
+            // 检查当前选择数量
+            const selectedCards = document.querySelectorAll('.divination-card.selected');
+
+            if (!checkbox.checked && selectedCards.length >= 3) {
+                alert('最多只能选择3种占卜类型');
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                // 如果是第一个选择的，自动设为主要身份
+                const checkedBoxes = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                if (checkedBoxes.length === 1) {
+                    radio.checked = true;
+                }
+            } else {
+                card.classList.remove('selected');
+                // 如果取消选择的是主要身份，清除主要身份选择
+                if (radio.checked) {
+                    radio.checked = false;
+                    // 自动选择第一个剩余的作为主要身份
+                    const remainingChecked = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                    if (remainingChecked.length > 0) {
+                        const firstRemaining = remainingChecked[0].closest('.divination-card').querySelector('input[type="radio"]');
+                        firstRemaining.checked = true;
+                    }
+                }
+            }
+        }
+
+        function selectPopularSpecialties() {
+            // 选择热门专长：感情、事业、财运
+            const popularSpecialties = ['感情', '事业', '财运'];
+            const cards = document.querySelectorAll('.specialty-card');
+
+            // 先清空所有选择
+            clearAllSpecialties();
+
+            // 选择热门专长
+            cards.forEach(card => {
+                const checkbox = card.querySelector('input[type="checkbox"]');
+                if (popularSpecialties.includes(checkbox.value)) {
+                    checkbox.checked = true;
+                    card.classList.add('selected');
+                }
+            });
+        }
+
         function selectPopularSpecialties() {
             // 清空所有选择
             clearAllSpecialties();
@@ -1037,11 +1556,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 检查图片剪裁工具加载状态
         function checkImageCropperLoaded() {
+            console.log('检查图片剪裁工具状态...');
+            console.log('window.imageCropper:', window.imageCropper);
+            console.log('window.simpleCropper:', window.simpleCropper);
+            console.log('window.ImageCropper:', window.ImageCropper);
+
             if (window.imageCropper) {
-                console.log('图片剪裁工具已加载');
+                console.log('✅ 图片剪裁工具已加载');
+                return true;
+            } else if (window.ImageCropper) {
+                console.log('✅ ImageCropper 类已加载，正在初始化...');
+                window.imageCropper = new window.ImageCropper();
                 return true;
             } else {
-                console.error('图片剪裁工具未加载');
+                console.error('❌ 图片剪裁工具未加载');
                 return false;
             }
         }
@@ -1049,7 +1577,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // 表单验证
         document.addEventListener('DOMContentLoaded', function() {
             // 检查图片剪裁工具
-            setTimeout(checkImageCropperLoaded, 1000);
+            setTimeout(checkImageCropperLoaded, 2000);
             const form = document.querySelector('form');
             const password = document.getElementById('password');
             const confirmPassword = document.getElementById('confirm_password');
@@ -1078,6 +1606,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     return false;
                 }
 
+                // 检查是否选择了占卜类型
+                const selectedDivinationTypes = document.querySelectorAll('input[name="divination_types[]"]:checked');
+                if (selectedDivinationTypes.length === 0) {
+                    e.preventDefault();
+                    alert('请至少选择一种占卜类型');
+                    return false;
+                }
+
+                if (selectedDivinationTypes.length > 3) {
+                    e.preventDefault();
+                    alert('最多只能选择3种占卜类型');
+                    return false;
+                }
+
+                // 检查是否选择了主要身份标签
+                const primaryIdentity = document.querySelector('input[name="primary_identity"]:checked');
+                if (!primaryIdentity) {
+                    e.preventDefault();
+                    alert('请选择一个主要身份标签');
+                    return false;
+                }
+
                 // 检查密码
                 if (password.value !== confirmPassword.value) {
                     e.preventDefault();
@@ -1085,14 +1635,165 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     return false;
                 }
 
+                // 检查联系方式（至少填写一项）
+                const contactFields = ['wechat', 'qq', 'xiaohongshu', 'weibo', 'other_contact'];
+                let hasContact = false;
+                for (let field of contactFields) {
+                    const input = document.getElementById(field);
+                    if (input && input.value.trim() !== '') {
+                        hasContact = true;
+                        break;
+                    }
+                }
+
+                if (!hasContact) {
+                    e.preventDefault();
+                    alert('请至少填写一种联系方式');
+                    return false;
+                }
+
                 return true;
+            });
+        });
+
+        // 头像选择功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadTab = document.getElementById('upload-tab');
+            const defaultTab = document.getElementById('default-tab');
+            const uploadSection = document.getElementById('upload-section');
+            const defaultSection = document.getElementById('default-section');
+            const genderSelect = document.getElementById('gender');
+            // 不再需要分别的男女头像容器，因为现在都显示在一起
+            const photoInput = document.getElementById('photo');
+            const useDefaultAvatarInput = document.getElementById('use_default_avatar');
+            const selectedDefaultAvatarInput = document.getElementById('selected_default_avatar');
+
+            // 切换头像选择方式
+            uploadTab.addEventListener('click', function() {
+                uploadTab.classList.add('active');
+                defaultTab.classList.remove('active');
+                uploadSection.classList.add('active');
+                defaultSection.classList.remove('active');
+                photoInput.required = true;
+                useDefaultAvatarInput.value = '0';
+                selectedDefaultAvatarInput.value = '';
+                // 清除默认头像选择
+                document.querySelectorAll('.avatar-option').forEach(option => {
+                    option.classList.remove('selected');
+                });
+            });
+
+            defaultTab.addEventListener('click', function() {
+                defaultTab.classList.add('active');
+                uploadTab.classList.remove('active');
+                defaultSection.classList.add('active');
+                uploadSection.classList.remove('active');
+                photoInput.required = false;
+                photoInput.value = '';
+                useDefaultAvatarInput.value = '1';
+            });
+
+            // 性别选择变化时的处理（现在不需要控制头像显示）
+            genderSelect.addEventListener('change', function() {
+                // 性别改变时不需要清除头像选择，用户可以自由选择任何头像
+                console.log('性别已选择:', this.value);
+            });
+
+            // 默认头像选择
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    // 清除其他选择
+                    document.querySelectorAll('.avatar-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    // 选择当前头像
+                    this.classList.add('selected');
+                    selectedDefaultAvatarInput.value = this.dataset.avatar;
+                });
+            });
+
+            // 处理图片加载错误
+            document.querySelectorAll('.avatar-option img').forEach(img => {
+                img.addEventListener('error', function() {
+                    console.error('图片加载失败:', this.src);
+                    this.style.display = 'none';
+                    // 可以在这里添加一个占位符
+                    const placeholder = document.createElement('div');
+                    placeholder.style.cssText = 'width: 100%; height: 100%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 12px;';
+                    placeholder.textContent = '图片加载失败';
+                    this.parentNode.appendChild(placeholder);
+                });
+
+                img.addEventListener('load', function() {
+                    console.log('图片加载成功:', this.src);
+                });
             });
         });
     </script>
 
-    <script src="../assets/js/image-cropper.js"></script>
-    <script src="../assets/js/simple-cropper.js"></script>
+    <script src="../assets/js/image-cropper.js?v=<?php echo time(); ?>" onload="console.log('image-cropper.js 加载成功')" onerror="console.error('image-cropper.js 加载失败')"></script>
+    <script src="../assets/js/simple-cropper.js?v=<?php echo time(); ?>" onload="console.log('simple-cropper.js 加载成功')" onerror="console.error('simple-cropper.js 加载失败')"></script>
     <script>
+        // 简单的Canvas圆形剪裁函数 - 提前定义
+        function createSimpleCircleCrop(file) {
+            return new Promise((resolve, reject) => {
+                console.log('createSimpleCircleCrop: 开始处理文件');
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    console.log('createSimpleCircleCrop: FileReader加载完成');
+                    const img = new Image();
+                    img.onload = function() {
+                        console.log('createSimpleCircleCrop: 图片加载完成', img.width, 'x', img.height);
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const size = 300;
+
+                            canvas.width = size;
+                            canvas.height = size;
+
+                            // 计算缩放比例，确保图片完全填充圆形
+                            const scale = Math.max(size / img.width, size / img.height);
+                            const scaledWidth = img.width * scale;
+                            const scaledHeight = img.height * scale;
+                            const x = (size - scaledWidth) / 2;
+                            const y = (size - scaledHeight) / 2;
+
+                            console.log('createSimpleCircleCrop: 缩放参数', {scale, scaledWidth, scaledHeight, x, y});
+
+                            // 创建圆形剪裁路径
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                            ctx.clip();
+
+                            // 绘制图片
+                            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                            ctx.restore();
+
+                            console.log('createSimpleCircleCrop: 图片绘制完成，转换为Blob');
+
+                            // 转换为Blob
+                            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                        } catch (error) {
+                            console.error('createSimpleCircleCrop: Canvas操作失败', error);
+                            reject(error);
+                        }
+                    };
+                    img.onerror = function() {
+                        console.error('createSimpleCircleCrop: 图片加载失败');
+                        reject(new Error('图片加载失败'));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function() {
+                    console.error('createSimpleCircleCrop: 文件读取失败');
+                    reject(new Error('文件读取失败'));
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         // 头像上传和剪裁功能
         document.addEventListener('DOMContentLoaded', function() {
             const photoInput = document.getElementById('photo');
@@ -1101,35 +1802,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const originalPreview = document.getElementById('original-preview');
             const circlePreview = document.getElementById('circle-preview');
             const cropButton = document.getElementById('crop-photo-btn');
-            const useDefaultAvatarBtn = document.getElementById('use-default-avatar-btn');
             const useDefaultAvatarInput = document.getElementById('use_default_avatar');
 
             let originalFile = null;
             let circleBlob = null;
             let usingDefaultAvatar = false;
 
-            // 默认头像按钮事件
-            useDefaultAvatarBtn.addEventListener('click', function() {
-                if (usingDefaultAvatar) {
-                    // 取消使用默认头像
-                    usingDefaultAvatar = false;
-                    useDefaultAvatarInput.value = '0';
-                    useDefaultAvatarBtn.textContent = '使用系统默认头像';
-                    useDefaultAvatarBtn.classList.remove('active');
-                    photoInput.required = true;
-                    photoPreviews.style.display = 'none';
-                } else {
-                    // 使用默认头像
-                    usingDefaultAvatar = true;
-                    useDefaultAvatarInput.value = '1';
-                    useDefaultAvatarBtn.textContent = '已选择默认头像';
-                    useDefaultAvatarBtn.classList.add('active');
-                    photoInput.required = false;
-                    photoInput.value = '';
-                    photoPreviews.style.display = 'none';
-                    cropButton.style.display = 'none';
-                }
-            });
+            // 注意：我们已经移除了默认头像按钮，现在使用标签页切换
 
             photoInput.addEventListener('change', function(e) {
                 const file = e.target.files[0];
@@ -1153,8 +1832,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (usingDefaultAvatar) {
                     usingDefaultAvatar = false;
                     useDefaultAvatarInput.value = '0';
-                    useDefaultAvatarBtn.textContent = '使用系统默认头像';
-                    useDefaultAvatarBtn.classList.remove('active');
                     photoInput.required = true;
                 }
 
@@ -1170,8 +1847,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // 延迟一点再打开剪裁工具，确保预览显示
                     setTimeout(() => {
+                        console.log('准备开始剪裁，检查工具状态...');
+                        checkImageCropperLoaded();
                         cropPhoto(file);
-                    }, 100);
+                    }, 500);
                 };
                 reader.readAsDataURL(file);
             });
@@ -1183,32 +1862,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
 
             function cropPhoto(file) {
-                console.log('开始剪裁图片:', file.name);
+                console.log('cropPhoto: 开始剪裁图片:', file.name);
+                console.log('cropPhoto: 文件大小:', file.size, '字节');
+                console.log('cropPhoto: 文件类型:', file.type);
 
-                // 检查图片剪裁工具是否可用
-                if (!window.imageCropper) {
-                    console.error('图片剪裁工具未加载，尝试使用简化版本');
-
-                    // 尝试使用简化版剪裁工具
-                    if (window.simpleCropper) {
-                        console.log('使用简化版图片剪裁工具');
-                        window.simpleCropper.cropToCircle(file)
-                            .then(handleCropSuccess)
-                            .catch(handleCropError);
-                    } else {
-                        alert('图片剪裁工具加载失败，将跳过圆形头像生成');
-                        // 只显示原始图片，不生成圆形头像
-                        circlePreview.style.display = 'none';
-                        cropButton.style.display = 'none';
-                    }
+                // 检查createSimpleCircleCrop函数是否存在
+                if (typeof createSimpleCircleCrop !== 'function') {
+                    console.error('cropPhoto: createSimpleCircleCrop函数未定义');
                     return;
                 }
 
-                console.log('图片剪裁工具已加载，开始显示剪裁界面');
+                // 直接使用内置的Canvas剪裁功能
+                console.log('cropPhoto: 调用createSimpleCircleCrop函数');
+                createSimpleCircleCrop(file)
+                    .then(blob => {
+                        console.log('cropPhoto: Canvas剪裁成功，blob大小:', blob.size);
+                        handleCropSuccess(blob);
+                    })
+                    .catch(error => {
+                        console.error('cropPhoto: Canvas剪裁失败:', error);
+                        // 如果Canvas剪裁失败，则跳过圆形头像
+                        circlePreview.style.display = 'none';
+                        cropButton.style.display = 'none';
 
-                window.imageCropper.show(file)
-                    .then(handleCropSuccess)
-                    .catch(handleCropError);
+                        const hint = document.createElement('div');
+                        hint.style.cssText = 'color: #f59e0b; font-size: 14px; margin-top: 10px; padding: 10px; background: #fef3c7; border-radius: 5px;';
+                        hint.textContent = '图片剪裁功能不可用，将使用原始图片作为头像';
+                        photoPreviews.appendChild(hint);
+                    });
             }
 
             function handleCropSuccess(blob) {

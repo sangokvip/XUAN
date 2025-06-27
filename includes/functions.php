@@ -415,4 +415,417 @@ function generateSecureFilename($originalName) {
 
     return generateRandomString(32) . '.' . $extension;
 }
+
+/**
+ * 清理和标准化照片路径
+ * 确保路径格式一致，适用于前台显示
+ */
+function cleanPhotoPath($path) {
+    if (empty($path)) {
+        return '';
+    }
+
+    // 移除可能的../前缀
+    $path = str_replace('../', '', $path);
+
+    // 移除开头的斜杠
+    $path = ltrim($path, '/');
+
+    return $path;
+}
+
+/**
+ * 获取占卜师照片URL
+ * 处理照片路径，如果没有照片则返回默认头像
+ * @param array $reader 占卜师数据
+ * @param bool $useCircle 是否优先使用圆形头像
+ * @param string $relativePath 相对路径前缀（如 '../' 用于子目录）
+ */
+function getReaderPhotoUrl($reader, $useCircle = false, $relativePath = '') {
+    $photoSrc = '';
+
+    if ($useCircle && !empty($reader['photo_circle'])) {
+        $photoSrc = cleanPhotoPath($reader['photo_circle']);
+    } elseif (!empty($reader['photo'])) {
+        $photoSrc = cleanPhotoPath($reader['photo']);
+    } else {
+        // 根据性别和ID使用默认头像（从m1-m4或f1-f4中基于ID选择）
+        $readerId = isset($reader['id']) ? $reader['id'] : 1;
+        if ($reader['gender'] === 'female') {
+            $avatarNum = (($readerId - 1) % 4) + 1;
+            $photoSrc = "img/f{$avatarNum}.jpg";
+        } else {
+            $avatarNum = (($readerId - 1) % 4) + 1;
+            $photoSrc = "img/m{$avatarNum}.jpg";
+        }
+    }
+
+    return $relativePath . $photoSrc;
+}
+
+/**
+ * 获取用户头像URL
+ * 处理头像路径，如果没有头像则返回默认头像
+ * @param array $user 用户数据
+ * @param string $relativePath 相对路径前缀（如 '../' 用于子目录）
+ */
+function getUserAvatarUrl($user, $relativePath = '') {
+    $avatarSrc = '';
+
+    if (!empty($user['avatar'])) {
+        $avatarSrc = cleanPhotoPath($user['avatar']);
+    } else {
+        // 根据性别使用默认头像
+        $avatarSrc = ($user['gender'] === 'female') ? 'img/nf.jpg' : 'img/nm.jpg';
+    }
+
+    return $relativePath . $avatarSrc;
+}
+
+/**
+ * 优化图片上传处理（压缩、调整尺寸、生成缩略图）
+ * @param array $file 上传的文件信息
+ * @param string $uploadPath 上传目录
+ * @param array $options 优化选项
+ * @return array 处理结果
+ */
+function uploadOptimizedImage($file, $uploadPath, $options = []) {
+    // 默认选项
+    $defaultOptions = [
+        'max_width' => 800,           // 最大宽度
+        'max_height' => 800,          // 最大高度
+        'quality' => 85,              // JPEG质量
+        'generate_thumbnails' => true, // 是否生成缩略图
+        'thumbnail_sizes' => [        // 缩略图尺寸
+            'small' => [150, 150],
+            'medium' => [300, 300],
+            'large' => [600, 600]
+        ],
+        'webp_support' => true,       // 是否生成WebP格式
+        'allowed_types' => ALLOWED_IMAGE_TYPES
+    ];
+
+    $options = array_merge($defaultOptions, $options);
+
+    // 基本验证
+    $basicUpload = uploadFile($file, $uploadPath, $options['allowed_types']);
+    if (!$basicUpload['success']) {
+        return $basicUpload;
+    }
+
+    $originalPath = $basicUpload['path'];
+    $fileName = $basicUpload['filename'];
+    $fileInfo = pathinfo($fileName);
+    $baseName = $fileInfo['filename'];
+    $extension = $fileInfo['extension'];
+
+    try {
+        // 优化原图
+        $optimizedPath = $uploadPath . $baseName . '_optimized.' . $extension;
+        if (optimizeImage($originalPath, $optimizedPath, $options)) {
+            // 删除原始文件，使用优化后的文件
+            unlink($originalPath);
+            rename($optimizedPath, $originalPath);
+        }
+
+        $result = [
+            'success' => true,
+            'filename' => $fileName,
+            'path' => $originalPath,
+            'thumbnails' => [],
+            'webp_versions' => []
+        ];
+
+        // 生成缩略图
+        if ($options['generate_thumbnails']) {
+            foreach ($options['thumbnail_sizes'] as $sizeName => $size) {
+                $thumbPath = $uploadPath . $baseName . '_' . $sizeName . '.' . $extension;
+                if (createThumbnail($originalPath, $thumbPath, $size[0], $size[1], $options['quality'])) {
+                    $result['thumbnails'][$sizeName] = $thumbPath;
+
+                    // 生成WebP缩略图
+                    if ($options['webp_support'] && function_exists('imagewebp')) {
+                        $webpThumbPath = $uploadPath . $baseName . '_' . $sizeName . '.webp';
+                        if (convertToWebP($thumbPath, $webpThumbPath, $options['quality'])) {
+                            $result['webp_versions'][$sizeName] = $webpThumbPath;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 生成主图的WebP版本
+        if ($options['webp_support'] && function_exists('imagewebp')) {
+            $webpPath = $uploadPath . $baseName . '.webp';
+            if (convertToWebP($originalPath, $webpPath, $options['quality'])) {
+                $result['webp_versions']['original'] = $webpPath;
+            }
+        }
+
+        return $result;
+
+    } catch (Exception $e) {
+        // 清理已创建的文件
+        if (file_exists($originalPath)) {
+            unlink($originalPath);
+        }
+        return ['success' => false, 'message' => '图片优化失败：' . $e->getMessage()];
+    }
+}
+
+/**
+ * 优化图片（压缩和调整尺寸）
+ */
+function optimizeImage($sourcePath, $destinationPath, $options) {
+    $imageInfo = getimagesize($sourcePath);
+    if (!$imageInfo) {
+        return false;
+    }
+
+    list($width, $height, $type) = $imageInfo;
+
+    // 如果图片尺寸已经合适且文件大小不大，直接复制
+    if ($width <= $options['max_width'] && $height <= $options['max_height'] && filesize($sourcePath) < 500 * 1024) {
+        return copy($sourcePath, $destinationPath);
+    }
+
+    // 计算新尺寸
+    $ratio = min($options['max_width'] / $width, $options['max_height'] / $height, 1);
+    $newWidth = (int)($width * $ratio);
+    $newHeight = (int)($height * $ratio);
+
+    // 创建源图像
+    $sourceImage = null;
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $sourceImage = imagecreatefromjpeg($sourcePath);
+            break;
+        case IMAGETYPE_PNG:
+            $sourceImage = imagecreatefrompng($sourcePath);
+            break;
+        case IMAGETYPE_GIF:
+            $sourceImage = imagecreatefromgif($sourcePath);
+            break;
+        default:
+            return false;
+    }
+
+    if (!$sourceImage) {
+        return false;
+    }
+
+    // 创建目标图像
+    $targetImage = imagecreatetruecolor($newWidth, $newHeight);
+
+    // 保持透明度
+    if ($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
+        imagealphablending($targetImage, false);
+        imagesavealpha($targetImage, true);
+        $transparent = imagecolorallocatealpha($targetImage, 255, 255, 255, 127);
+        imagefill($targetImage, 0, 0, $transparent);
+    }
+
+    // 缩放图像
+    imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+    // 保存图像
+    $result = false;
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $result = imagejpeg($targetImage, $destinationPath, $options['quality']);
+            break;
+        case IMAGETYPE_PNG:
+            $result = imagepng($targetImage, $destinationPath, 6);
+            break;
+        case IMAGETYPE_GIF:
+            $result = imagegif($targetImage, $destinationPath);
+            break;
+    }
+
+    // 清理资源
+    imagedestroy($sourceImage);
+    imagedestroy($targetImage);
+
+    return $result;
+}
+
+/**
+ * 转换图片为WebP格式
+ */
+function convertToWebP($sourcePath, $destinationPath, $quality = 85) {
+    if (!function_exists('imagewebp')) {
+        return false;
+    }
+
+    $imageInfo = getimagesize($sourcePath);
+    if (!$imageInfo) {
+        return false;
+    }
+
+    list($width, $height, $type) = $imageInfo;
+
+    $sourceImage = null;
+    switch ($type) {
+        case IMAGETYPE_JPEG:
+            $sourceImage = imagecreatefromjpeg($sourcePath);
+            break;
+        case IMAGETYPE_PNG:
+            $sourceImage = imagecreatefrompng($sourcePath);
+            break;
+        case IMAGETYPE_GIF:
+            $sourceImage = imagecreatefromgif($sourcePath);
+            break;
+        default:
+            return false;
+    }
+
+    if (!$sourceImage) {
+        return false;
+    }
+
+    $result = imagewebp($sourceImage, $destinationPath, $quality);
+    imagedestroy($sourceImage);
+
+    return $result;
+}
+
+/**
+ * 获取优化的图片URL（支持WebP和缩略图）
+ * @param string $imagePath 原始图片路径
+ * @param string $size 尺寸（small, medium, large, original）
+ * @param string $relativePath 相对路径前缀
+ * @return array 包含多种格式的图片URL
+ */
+function getOptimizedImageUrl($imagePath, $size = 'medium', $relativePath = '') {
+    if (empty($imagePath)) {
+        return null;
+    }
+
+    $cleanPath = cleanPhotoPath($imagePath);
+    $pathInfo = pathinfo($cleanPath);
+    $baseName = $pathInfo['filename'];
+    $extension = $pathInfo['extension'];
+    $directory = $pathInfo['dirname'];
+
+    $result = [
+        'original' => $relativePath . $cleanPath,
+        'webp' => null,
+        'thumbnail' => null,
+        'webp_thumbnail' => null
+    ];
+
+    // 构建缩略图路径
+    if ($size !== 'original') {
+        $thumbnailPath = $directory . '/' . $baseName . '_' . $size . '.' . $extension;
+        $webpThumbnailPath = $directory . '/' . $baseName . '_' . $size . '.webp';
+
+        if (file_exists($thumbnailPath)) {
+            $result['thumbnail'] = $relativePath . $thumbnailPath;
+        }
+
+        if (file_exists($webpThumbnailPath)) {
+            $result['webp_thumbnail'] = $relativePath . $webpThumbnailPath;
+        }
+    }
+
+    // 构建WebP原图路径
+    $webpPath = $directory . '/' . $baseName . '.webp';
+    if (file_exists($webpPath)) {
+        $result['webp'] = $relativePath . $webpPath;
+    }
+
+    return $result;
+}
+
+/**
+ * 生成响应式图片HTML标签
+ * @param string $imagePath 图片路径
+ * @param string $alt 替代文本
+ * @param string $size 尺寸
+ * @param array $attributes 额外属性
+ * @param string $relativePath 相对路径前缀
+ * @return string HTML标签
+ */
+function generateResponsiveImage($imagePath, $alt = '', $size = 'medium', $attributes = [], $relativePath = '') {
+    $imageUrls = getOptimizedImageUrl($imagePath, $size, $relativePath);
+
+    if (!$imageUrls) {
+        return '';
+    }
+
+    // 构建属性字符串
+    $attrString = '';
+    foreach ($attributes as $key => $value) {
+        $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+    }
+
+    // 优先使用缩略图，然后是原图
+    $mainSrc = $imageUrls['thumbnail'] ?: $imageUrls['original'];
+    $webpSrc = $imageUrls['webp_thumbnail'] ?: $imageUrls['webp'];
+
+    if ($webpSrc) {
+        // 支持WebP的浏览器使用WebP，否则使用原格式
+        return '<picture>
+                    <source srcset="' . htmlspecialchars($webpSrc) . '" type="image/webp">
+                    <img src="' . htmlspecialchars($mainSrc) . '" alt="' . htmlspecialchars($alt) . '"' . $attrString . '>
+                </picture>';
+    } else {
+        // 只有原格式
+        return '<img src="' . htmlspecialchars($mainSrc) . '" alt="' . htmlspecialchars($alt) . '"' . $attrString . '>';
+    }
+}
+
+/**
+ * 获取占卜师优化头像HTML
+ */
+function getReaderOptimizedAvatar($reader, $size = 'medium', $useCircle = false, $relativePath = '', $attributes = []) {
+    $photoPath = '';
+
+    if ($useCircle && !empty($reader['photo_circle'])) {
+        $photoPath = $reader['photo_circle'];
+    } elseif (!empty($reader['photo'])) {
+        $photoPath = $reader['photo'];
+    } else {
+        // 使用默认头像
+        $readerId = isset($reader['id']) ? $reader['id'] : 1;
+        if ($reader['gender'] === 'female') {
+            $avatarNum = (($readerId - 1) % 4) + 1;
+            $photoPath = "img/f{$avatarNum}.jpg";
+        } else {
+            $avatarNum = (($readerId - 1) % 4) + 1;
+            $photoPath = "img/m{$avatarNum}.jpg";
+        }
+
+        // 默认头像直接返回简单的img标签
+        $attrString = '';
+        foreach ($attributes as $key => $value) {
+            $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+        }
+        return '<img src="' . htmlspecialchars($relativePath . $photoPath) . '" alt="' . htmlspecialchars($reader['full_name'] ?? '') . '"' . $attrString . '>';
+    }
+
+    return generateResponsiveImage($photoPath, $reader['full_name'] ?? '', $size, $attributes, $relativePath);
+}
+
+/**
+ * 获取用户优化头像HTML
+ */
+function getUserOptimizedAvatar($user, $size = 'medium', $relativePath = '', $attributes = []) {
+    $avatarPath = '';
+
+    if (!empty($user['avatar'])) {
+        $avatarPath = $user['avatar'];
+        return generateResponsiveImage($avatarPath, $user['full_name'] ?? '', $size, $attributes, $relativePath);
+    } else {
+        // 使用默认头像
+        $avatarPath = ($user['gender'] === 'female') ? 'img/nf.jpg' : 'img/nm.jpg';
+
+        // 默认头像直接返回简单的img标签
+        $attrString = '';
+        foreach ($attributes as $key => $value) {
+            $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+        }
+        return '<img src="' . htmlspecialchars($relativePath . $avatarPath) . '" alt="' . htmlspecialchars($user['full_name'] ?? '') . '"' . $attrString . '>';
+    }
+}
 ?>

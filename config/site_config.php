@@ -1,6 +1,7 @@
 <?php
 // 网站配置
-// 请将下面的URL替换为您的实际网站URL
-define('SITE_URL', 'http://t.xuan.mom');
+define('SITE_URL', 'https://diviners.pro');
 define('INSTALLED', true);
-?>
+
+// 包含数据库配置
+require_once __DIR__ . '/database_config.php';

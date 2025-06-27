@@ -1,7 +1,7 @@
 <?php
 /**
  * 等级标签显示组件
- * 用于在各个地方显示用户和塔罗师的等级标签
+ * 用于在各个地方显示用户和占卜师的等级标签
  */
 
 /**
@@ -44,14 +44,14 @@ function getUserLevelBadgeHTML($level, $levelName, $size = 'small') {
 }
 
 /**
- * 生成塔罗师等级标签HTML
+ * 生成占卜师等级标签HTML
  * @param string $levelName 等级名称
  * @param string $size 尺寸
  * @return string HTML
  */
 function getReaderLevelBadgeHTML($levelName, $size = 'small') {
     $sizeClass = 'level-badge-' . $size;
-    $typeClass = $levelName === '推荐塔罗师' ? 'reader-featured' : 'reader-normal';
+    $typeClass = $levelName === '推荐占卜师' ? 'reader-featured' : 'reader-normal';
     
     return "<span class=\"reader-level-badge {$sizeClass} {$typeClass}\">{$levelName}</span>";
 }
@@ -95,7 +95,7 @@ function outputLevelBadgeCSS() {
         background: linear-gradient(135deg, #ff9800, #ffb74d); /* 金色 - L5 */
     }
     
-    /* 塔罗师等级标签 */
+    /* 占卜师等级标签 */
     .reader-level-badge {
         display: inline-block;
         padding: 2px 6px;
@@ -109,11 +109,11 @@ function outputLevelBadgeCSS() {
     }
     
     .reader-level-badge.reader-normal {
-        background: linear-gradient(135deg, #607d8b, #78909c); /* 蓝灰色 - 普通塔罗师 */
+        background: linear-gradient(135deg, #607d8b, #78909c); /* 蓝灰色 - 普通占卜师 */
     }
     
     .reader-level-badge.reader-featured {
-        background: linear-gradient(135deg, #e91e63, #f06292); /* 粉红色 - 推荐塔罗师 */
+        background: linear-gradient(135deg, #e91e63, #f06292); /* 粉红色 - 推荐占卜师 */
     }
     
     /* 尺寸变体 */
@@ -174,12 +174,12 @@ function getLevelDescription($userType = 'user') {
     } else {
         return '
         <div class="level-description">
-            <h4>塔罗师等级说明</h4>
+            <h4>占卜师等级说明</h4>
             <ul>
-                <li><span class="reader-level-badge level-badge-medium reader-normal">塔罗师</span> 普通塔罗师</li>
-                <li><span class="reader-level-badge level-badge-medium reader-featured">推荐塔罗师</span> 平台推荐的优质塔罗师</li>
+                <li><span class="reader-level-badge level-badge-medium reader-normal">占卜师</span> 普通占卜师</li>
+                <li><span class="reader-level-badge level-badge-medium reader-featured">推荐占卜师</span> 平台推荐的优质占卜师</li>
             </ul>
-            <p><small>推荐塔罗师由平台根据服务质量和用户评价进行认定。</small></p>
+            <p><small>推荐占卜师由平台根据服务质量和用户评价进行认定。</small></p>
         </div>';
     }
 }

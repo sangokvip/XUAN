@@ -6,42 +6,42 @@ try {
     $db = Database::getInstance();
     $reviewManager = new ReviewManager();
     
-    echo "<h2>更新塔罗师评分统计</h2>";
-    
+    echo "<h2>更新占卜师评分统计</h2>";
+
     // 检查评价系统是否已安装
     if (!$reviewManager->isInstalled()) {
         echo "<p style='color: red;'>❌ 评价系统尚未安装</p>";
         exit;
     }
-    
-    // 获取所有塔罗师
+
+    // 获取所有占卜师
     $readers = $db->fetchAll("SELECT id, full_name FROM readers ORDER BY id");
-    
+
     if (empty($readers)) {
-        echo "<p style='color: orange;'>⚠️ 没有找到塔罗师</p>";
+        echo "<p style='color: orange;'>⚠️ 没有找到占卜师</p>";
         exit;
     }
-    
-    echo "<p>开始更新 " . count($readers) . " 位塔罗师的评分统计...</p>";
+
+    echo "<p>开始更新 " . count($readers) . " 位占卜师的评分统计...</p>";
     
     $updated = 0;
     $errors = 0;
     
     foreach ($readers as $reader) {
         try {
-            // 获取该塔罗师的评价统计
+            // 获取该占卜师的评价统计
             $stats = $db->fetchOne("
-                SELECT 
+                SELECT
                     AVG(rating) as avg_rating,
                     COUNT(*) as total_reviews
-                FROM reader_reviews 
+                FROM reader_reviews
                 WHERE reader_id = ?
             ", [$reader['id']]);
-            
+
             $avgRating = $stats['avg_rating'] ? round($stats['avg_rating'], 2) : 0;
             $totalReviews = $stats['total_reviews'] ?: 0;
-            
-            // 更新塔罗师表
+
+            // 更新占卜师表
             $db->query("
                 UPDATE readers 
                 SET average_rating = ?, total_reviews = ? 

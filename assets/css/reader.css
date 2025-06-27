@@ -312,62 +312,128 @@
     font-weight: 500;
 }
 
-/* 响应式设计 */
-@media (max-width: 768px) {
-    .reader-container {
-        grid-template-columns: 1fr;
+/* 移动端网格导航 - 占卜师后台专用 */
+body .mobile-nav-grid {
+    display: none !important; /* 默认隐藏，只在移动端显示 */
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    padding: 15px !important;
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+    border-bottom: 2px solid #d4af37 !important;
+    margin-bottom: 15px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body .mobile-nav-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px 6px !important;
+    background: linear-gradient(135deg, #2d2d2d, #3d3d3d) !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    color: #d4af37 !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid #d4af37 !important;
+    min-height: 70px !important;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.1) !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+
+.mobile-nav-item:hover,
+.mobile-nav-item.active {
+    background: linear-gradient(135deg, #d4af37, #f4c430);
+    color: #1a1a1a;
+    border-color: #f4c430;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+
+.mobile-nav-item .icon {
+    font-size: 18px;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.mobile-nav-item .text {
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* 响应式设计 - 占卜师后台专用 */
+@media screen and (max-width: 768px) {
+    /* 重置占卜师后台容器 */
+    body .reader-container {
+        display: block !important; /* 改为块级布局 */
+        grid-template-columns: none !important;
+        gap: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
     }
 
-    .reader-sidebar {
-        order: 1;
-        padding: 15px 0;
-        background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-        border-bottom: 2px solid #d4af37;
+    /* 完全隐藏传统侧栏 */
+    body .reader-sidebar {
+        display: none !important;
+        visibility: hidden !important;
     }
 
+    /* 强制显示移动端网格导航 */
+    body .mobile-nav-grid {
+        display: grid !important;
+        position: relative !important;
+        z-index: 1000 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* 优化内容区域 */
     .reader-content {
-        order: 2;
-        padding: 20px;
+        padding: 15px;
+        background: #f8f8f8;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        box-sizing: border-box;
     }
 
-    .sidebar-nav {
-        display: flex;
-        overflow-x: auto;
-        padding: 0 15px;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
+    /* 确保移动端没有横向滚动 */
+    body {
+        overflow-x: hidden;
     }
 
-    .sidebar-nav::-webkit-scrollbar {
-        display: none;
+    /* 隐藏可能的移动端菜单按钮 */
+    .mobile-menu-toggle {
+        display: none !important;
     }
 
-    .sidebar-nav li {
-        margin-bottom: 0;
-        margin-right: 8px;
-        white-space: nowrap;
-        flex-shrink: 0;
+    /* 移动端网格导航优化 */
+    .mobile-nav-grid {
+        padding: 12px !important;
+        gap: 10px !important;
     }
 
-    .sidebar-nav a {
-        padding: 12px 16px;
-        border-left: none;
-        border-bottom: 3px solid transparent;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        background: rgba(255, 255, 255, 0.1);
-        transition: all 0.3s ease;
-        min-width: 85px;
-        text-align: center;
+    .mobile-nav-item {
+        min-height: 65px !important;
+        padding: 8px 4px !important;
     }
 
-    .sidebar-nav a:hover,
-    .sidebar-nav a.active {
-        border-left: none;
-        border-bottom-color: #d4af37;
-        background: rgba(212, 175, 55, 0.2);
-        color: #d4af37;
+    .mobile-nav-item .icon {
+        font-size: 16px !important;
+        margin-bottom: 3px !important;
+    }
+
+    .mobile-nav-item .text {
+        font-size: 9px !important;
     }
 
     .stats-grid {
@@ -414,28 +480,27 @@
 }
 
 @media (max-width: 480px) {
-    .reader-content {
+    .mobile-nav-grid {
+        gap: 12px;
         padding: 15px;
     }
 
-    .reader-sidebar {
-        padding: 10px 0;
+    .mobile-nav-item {
+        padding: 12px 8px;
+        min-height: 70px;
     }
 
-    .sidebar-nav {
-        padding: 0 10px;
+    .mobile-nav-item .icon {
+        font-size: 20px;
+        margin-bottom: 6px;
     }
 
-    .sidebar-nav a {
-        padding: 10px 12px;
-        font-size: 13px;
-        min-width: 75px;
+    .mobile-nav-item .text {
+        font-size: 11px;
     }
 
-    .sidebar-nav .icon {
-        display: block;
-        margin: 0 0 4px 0;
-        font-size: 16px;
+    .reader-content {
+        padding: 15px;
     }
 
     .stats-grid {
@@ -494,4 +559,53 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+}
+
+/* ========================================
+   移动端网格导航强制样式 - 最高优先级
+   ======================================== */
+
+/* 强制移动端导航显示 - 覆盖所有其他样式 */
+@media screen and (max-width: 768px) {
+    html body .reader-container .mobile-nav-grid {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 12px !important;
+        padding: 15px !important;
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+        border-bottom: 2px solid #d4af37 !important;
+        margin-bottom: 15px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        z-index: 1000 !important;
+    }
+
+    html body .reader-container .reader-sidebar {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    html body .reader-container {
+        display: block !important;
+        grid-template-columns: none !important;
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+
+    html body .mobile-nav-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 10px 6px !important;
+        background: linear-gradient(135deg, #2d2d2d, #3d3d3d) !important;
+        border-radius: 8px !important;
+        text-decoration: none !important;
+        color: #d4af37 !important;
+        transition: all 0.3s ease !important;
+        border: 1px solid #d4af37 !important;
+        min-height: 70px !important;
+        box-shadow: 0 2px 8px rgba(212, 175, 55, 0.1) !important;
+    }
 }

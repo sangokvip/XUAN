@@ -24,7 +24,7 @@ if (!empty($query)) {
         $hasCustomSpecialties = false;
     }
 
-    // 搜索塔罗师
+    // 搜索占卜师
     $searchTerm = "%{$query}%";
 
     if ($hasCustomSpecialties) {
@@ -86,7 +86,7 @@ if (!empty($query)) {
     $totalPages = ceil($totalCount / $limit);
 }
 
-$pageTitle = !empty($query) ? "搜索：{$query}" : '搜索塔罗师';
+$pageTitle = !empty($query) ? "搜索：{$query}" : '搜索占卜师';
 ?>
 
 <!DOCTYPE html>
@@ -103,10 +103,10 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索塔罗师';
 
     <div class="search-container">
         <div class="search-header">
-            <h1>🔍 搜索塔罗师</h1>
+            <h1>🔍 搜索占卜师</h1>
             <form method="GET" class="search-form">
                 <input type="text" name="q" value="<?php echo h($query); ?>"
-                       placeholder="输入塔罗师姓名、专长或关键词..."
+                       placeholder="输入占卜师姓名、专长或关键词..."
                        class="search-input" autofocus>
                 <button type="submit" class="search-btn">搜索</button>
             </form>
@@ -115,25 +115,29 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索塔罗师';
         <?php if (!empty($query)): ?>
             <div class="search-results-header">
                 <div class="results-count">
-                    找到 <strong><?php echo $totalCount; ?></strong> 位塔罗师
+                    找到 <strong><?php echo $totalCount; ?></strong> 位占卜师
                     <?php if (!empty($query)): ?>
                         包含关键词 "<strong><?php echo h($query); ?></strong>"
                     <?php endif; ?>
                 </div>
-                <a href="readers.php" class="btn-view">浏览所有塔罗师</a>
+                <a href="readers.php" class="btn-view">浏览所有占卜师</a>
             </div>
 
             <?php if (empty($readers)): ?>
                 <div class="empty-state">
                     <div class="empty-state-icon">🔍</div>
-                    <h3>未找到相关塔罗师</h3>
-                    <p>尝试使用其他关键词搜索，或者<a href="readers.php">浏览所有塔罗师</a></p>
+                    <h3>未找到相关占卜师</h3>
+                    <p>尝试使用其他关键词搜索，或者<a href="readers.php">浏览所有占卜师</a></p>
                 </div>
             <?php else: ?>
                 <div class="readers-grid">
                     <?php foreach ($readers as $reader): ?>
                         <div class="reader-card">
-                            <img src="<?php echo h($reader['photo_circle'] ?: ($reader['photo'] ?: 'img/tm.jpg')); ?>"
+                            <?php
+                            $photoSrc = getReaderPhotoUrl($reader, true);
+                            ?>
+                            ?>
+                            <img src="<?php echo h($photoSrc); ?>"
                                  alt="<?php echo h($reader['full_name']); ?>"
                                  class="reader-avatar">
 
@@ -194,9 +198,9 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索塔罗师';
         <?php else: ?>
             <div class="empty-state">
                 <div class="empty-state-icon">🔮</div>
-                <h3>开始搜索塔罗师</h3>
-                <p>输入塔罗师姓名、专长或关键词来查找您需要的塔罗师</p>
-                <a href="readers.php" class="btn-view" style="margin-top: 20px;">浏览所有塔罗师</a>
+                <h3>开始搜索占卜师</h3>
+                <p>输入占卜师姓名、专长或关键词来查找您需要的占卜师</p>
+                <a href="readers.php" class="btn-view" style="margin-top: 20px;">浏览所有占卜师</a>
             </div>
         <?php endif; ?>
     </div>

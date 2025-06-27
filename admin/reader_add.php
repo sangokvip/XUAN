@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/DivinationConfig.php';
 
 // 检查管理员权限
 requireAdminLogin('../auth/admin_login.php');
@@ -20,7 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'phone' => trim($_POST['phone'] ?? ''),
         'experience_years' => (int)($_POST['experience_years'] ?? 0),
         'description' => trim($_POST['description'] ?? ''),
-        'custom_specialty' => trim($_POST['custom_specialty'] ?? '')
+        'custom_specialty' => trim($_POST['custom_specialty'] ?? ''),
+        'nationality' => $_POST['nationality'] ?? '',
+        'divination_types' => $_POST['divination_types'] ?? [],
+        'primary_identity' => $_POST['primary_identity'] ?? ''
     ];
     
     // 处理擅长方向
@@ -48,9 +52,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $specialtiesStr = implode('、', $specialties);
     
+    // 验证占卜类型选择
+    if (!empty($data['divination_types'])) {
+        $divinationValidation = DivinationConfig::validateDivinationSelection(
+            $data['divination_types'],
+            $data['primary_identity']
+        );
+
+        if (!$divinationValidation['valid']) {
+            $errors = array_merge($errors, $divinationValidation['errors']);
+        }
+    }
+
     // 验证必填字段
     if (empty($data['username']) || empty($data['email']) || empty($data['password']) ||
-        empty($data['full_name']) || empty($specialties)) {
+        empty($data['full_name']) || empty($specialties) || empty($data['nationality']) ||
+        empty($data['divination_types']) || empty($data['primary_identity'])) {
         $errors[] = '请填写所有必填字段';
     }
     
@@ -131,9 +148,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                // 创建塔罗师账户
+                // 创建占卜师账户
                 $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-                
+
+                // 处理占卜类型数据
+                $divinationTypesJson = null;
+                $identityCategory = null;
+                if (!empty($data['divination_types'])) {
+                    $divinationTypesJson = json_encode($data['divination_types']);
+
+                    // 根据主要身份标签确定类别
+                    if (!empty($data['primary_identity'])) {
+                        $identityCategory = DivinationConfig::getDivinationCategory($data['primary_identity']);
+                    }
+                }
+
                 $insertData = [
                     'username' => $data['username'],
                     'email' => $data['email'],
@@ -145,6 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'description' => $data['description'],
                     'photo' => $data['photo'],
                     'photo_circle' => $data['photo_circle'] ?? null,
+                    'nationality' => $data['nationality'],
+                    'divination_types' => $divinationTypesJson,
+                    'primary_identity' => $data['primary_identity'],
+                    'identity_category' => $identityCategory,
                     'is_active' => 1,
                     'is_featured' => 0,
                     'created_at' => date('Y-m-d H:i:s')
@@ -153,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = $db->insert('readers', $insertData);
                 
                 if ($result) {
-                    $success = '塔罗师添加成功！';
+                    $success = '占卜师添加成功！';
                     // 清空表单数据
                     $data = [];
                 } else {
@@ -176,10 +209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>添加塔罗师 - 管理后台</title>
+    <title>添加占卜师 - 管理后台</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link rel="stylesheet" href="../assets/css/image-cropper.css">
+    <link rel="stylesheet" href="../assets/css/divination-tags.css">
     <style>
         /* 一键选择按钮样式 */
         .specialty-quick-actions {
@@ -319,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <div class="admin-content">
             <div class="page-header">
-                <h1>添加塔罗师</h1>
+                <h1>添加占卜师</h1>
                 <div class="page-actions">
                     <a href="readers.php" class="btn btn-secondary">返回列表</a>
                 </div>
@@ -338,12 +372,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($success): ?>
                 <div class="alert alert-success">
                     <?php echo h($success); ?>
-                    <p><a href="readers.php">返回塔罗师列表</a></p>
+                    <p><a href="readers.php">返回占卜师列表</a></p>
                 </div>
             <?php else: ?>
                 <div class="card">
                     <div class="card-header">
-                        <h2>塔罗师信息</h2>
+                        <h2>占卜师信息</h2>
                     </div>
                     <div class="card-body">
                         <form method="POST" enctype="multipart/form-data">
@@ -386,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="form-group">
                                     <label for="full_name">昵称 *</label>
                                     <input type="text" id="full_name" name="full_name" required
-                                           placeholder="请输入塔罗师昵称"
+                                           placeholder="请输入占卜师昵称"
                                            value="<?php echo h($_POST['full_name'] ?? ''); ?>">
                                 </div>
                                 
@@ -397,10 +431,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </div>
                             </div>
                             
-                            <div class="form-group">
-                                <label for="experience_years">从业年数 *</label>
-                                <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
-                                       value="<?php echo h($_POST['experience_years'] ?? ''); ?>">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="experience_years">从业年数 *</label>
+                                    <input type="number" id="experience_years" name="experience_years" required min="1" max="50"
+                                           value="<?php echo h($_POST['experience_years'] ?? ''); ?>">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="nationality">国籍 *</label>
+                                    <select id="nationality" name="nationality" required>
+                                        <option value="">请选择国籍</option>
+                                        <?php
+                                        $nationalities = DivinationConfig::getNationalities();
+                                        $selectedNationality = $_POST['nationality'] ?? '';
+                                        foreach ($nationalities as $code => $name):
+                                        ?>
+                                            <option value="<?php echo h($code); ?>" <?php echo $selectedNationality === $code ? 'selected' : ''; ?>>
+                                                <?php echo h($name); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
 
                             <!-- 占卜方向选择 -->
@@ -440,10 +492,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             <div class="form-group">
                                 <label for="description">个人简介</label>
-                                <textarea id="description" name="description" rows="4" 
-                                          placeholder="请简单介绍塔罗师的经历和服务特色"><?php echo h($_POST['description'] ?? ''); ?></textarea>
+                                <textarea id="description" name="description" rows="4"
+                                          placeholder="请简单介绍占卜师的经历和服务特色"><?php echo h($_POST['description'] ?? ''); ?></textarea>
                             </div>
-                            
+
+                            <!-- 占卜类型选择 -->
+                            <div class="form-group">
+                                <label>占卜类型 * (最多选择3项，其中1项作为主要身份标签)</label>
+
+                                <?php
+                                $allDivinationTypes = DivinationConfig::getAllDivinationTypes();
+                                $selectedTypes = $_POST['divination_types'] ?? [];
+                                $primaryIdentity = $_POST['primary_identity'] ?? '';
+                                ?>
+
+                                <?php foreach ($allDivinationTypes as $category => $categoryData): ?>
+                                    <div class="divination-category">
+                                        <h4 class="category-title <?php echo $category; ?>-category">
+                                            <?php echo h($categoryData['name']); ?>
+                                            <span class="category-badge <?php echo $category; ?>-badge"><?php echo $categoryData['color'] === 'purple' ? '紫' : '黑'; ?></span>
+                                        </h4>
+                                        <div class="divination-grid">
+                                            <?php foreach ($categoryData['types'] as $typeKey => $typeName): ?>
+                                                <div class="divination-card <?php echo in_array($typeKey, $selectedTypes) ? 'selected' : ''; ?>"
+                                                     onclick="toggleDivinationType(this, '<?php echo $typeKey; ?>')">
+                                                    <input type="checkbox" name="divination_types[]" value="<?php echo h($typeKey); ?>"
+                                                           <?php echo in_array($typeKey, $selectedTypes) ? 'checked' : ''; ?>>
+                                                    <span class="divination-text"><?php echo h($typeName); ?></span>
+                                                    <div class="primary-radio">
+                                                        <input type="radio" name="primary_identity" value="<?php echo h($typeKey); ?>"
+                                                               <?php echo $primaryIdentity === $typeKey ? 'checked' : ''; ?>
+                                                               onclick="event.stopPropagation();">
+                                                        <label>主要</label>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="divination-help">
+                                    <small>
+                                        <strong>说明：</strong><br>
+                                        • 西玄占卜师标签为<span style="color: purple; font-weight: bold;">紫色</span><br>
+                                        • 东玄占卜师标签为<span style="color: black; font-weight: bold;">黑色</span><br>
+                                        • 主要身份标签将在占卜师的个人页面和列表中显示<br>
+                                        • 其他选择的类型将作为技能项展示
+                                    </small>
+                                </div>
+                            </div>
+
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="password">密码 *</label>
@@ -458,7 +556,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                             
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">添加塔罗师</button>
+                                <button type="submit" class="btn btn-primary">添加占卜师</button>
                                 <a href="readers.php" class="btn btn-secondary">取消</a>
                             </div>
                         </form>
@@ -469,6 +567,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script>
+        // 占卜类型选择功能
+        function toggleDivinationType(card, typeKey) {
+            const checkbox = card.querySelector('input[type="checkbox"]');
+            const radio = card.querySelector('input[type="radio"]');
+
+            // 检查当前选择数量
+            const selectedCards = document.querySelectorAll('.divination-card.selected');
+
+            if (!checkbox.checked && selectedCards.length >= 3) {
+                alert('最多只能选择3种占卜类型');
+                return;
+            }
+
+            checkbox.checked = !checkbox.checked;
+
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                // 如果是第一个选择的，自动设为主要身份
+                const checkedBoxes = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                if (checkedBoxes.length === 1) {
+                    radio.checked = true;
+                }
+            } else {
+                card.classList.remove('selected');
+                // 如果取消选择的是主要身份，清除主要身份选择
+                if (radio.checked) {
+                    radio.checked = false;
+                    // 自动选择第一个剩余的作为主要身份
+                    const remainingChecked = document.querySelectorAll('.divination-card input[type="checkbox"]:checked');
+                    if (remainingChecked.length > 0) {
+                        const firstRemaining = remainingChecked[0].closest('.divination-card').querySelector('input[type="radio"]');
+                        firstRemaining.checked = true;
+                    }
+                }
+            }
+        }
+
         // 一键选择功能
         function selectAllSpecialties() {
             const checkboxes = document.querySelectorAll('input[name="specialties[]"]');

@@ -45,20 +45,36 @@ CREATE TABLE IF NOT EXISTS readers (
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
+    phone VARCHAR(20) COMMENT '电话号码',
+    gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女',
+    nationality VARCHAR(10) DEFAULT 'CN' COMMENT '国籍代码',
     photo VARCHAR(255),
+    photo_circle VARCHAR(255) DEFAULT NULL COMMENT '圆形头像（用于首页展示）',
+    certificates TEXT DEFAULT NULL COMMENT '证书图片路径（JSON格式）',
     price_list_image VARCHAR(255),
     experience_years INT NOT NULL DEFAULT 0,
     specialties TEXT,
+    custom_specialties VARCHAR(500) DEFAULT NULL COMMENT '自定义专长标签（最多3个，每个最多4字符）',
+    divination_types TEXT DEFAULT NULL COMMENT '占卜类型（JSON格式）',
+    primary_identity VARCHAR(50) DEFAULT NULL COMMENT '主要身份标签',
+    identity_category ENUM('western', 'eastern') DEFAULT NULL COMMENT '身份类别：western-西玄，eastern-东玄',
     description TEXT,
-    contact_info TEXT,
+    contact_info TEXT COMMENT '联系信息描述',
+    wechat VARCHAR(100) DEFAULT NULL COMMENT '微信号',
+    qq VARCHAR(50) DEFAULT NULL COMMENT 'QQ号',
+    xiaohongshu VARCHAR(100) DEFAULT NULL COMMENT '小红书账号',
+    douyin VARCHAR(100) DEFAULT NULL COMMENT '抖音账号',
+    other_contact TEXT DEFAULT NULL COMMENT '其他联系方式',
+    view_count INT DEFAULT 0 COMMENT '查看次数',
+    average_rating DECIMAL(3,2) DEFAULT 0.00 COMMENT '平均评分',
+    total_reviews INT DEFAULT 0 COMMENT '总评价数',
+    tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，占卜师默认0',
     is_featured BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     registration_token VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (registration_token) REFERENCES reader_registration_links(token)
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 用户查看塔罗师联系方式记录表
 CREATE TABLE IF NOT EXISTS contact_views (

@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/config.php';
+require_once 'includes/DivinationTagHelper.php';
 
 // 检查是否已登录
 $user = null;
@@ -8,7 +9,7 @@ if (isset($_SESSION['user_id'])) {
     $user = getUserById($_SESSION['user_id']);
 }
 
-// 获取推荐的塔罗师
+// 获取推荐的占卜师
 $featured_readers = getFeaturedReaders();
 ?>
 
@@ -20,6 +21,7 @@ $featured_readers = getFeaturedReaders();
     <title><?php echo getSiteName(); ?> - <?php echo getSiteDescription(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/divination-tags.css">
 
     <?php
     // 输出等级标签CSS
@@ -44,47 +46,43 @@ $featured_readers = getFeaturedReaders();
                         Connect with experienced diviners for personalized readings and guidance.
                     </p>
                     <div class="hero-actions">
-                        <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-explore">Explore Tarot Masters</a>
+                        <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-explore">Explore Diviners</a>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- 推荐塔罗师 -->
+        <!-- 推荐占卜师 -->
         <section class="featured-readers-section">
             <div class="container">
-                <h2 class="section-title">推荐塔罗师</h2>
+                <h2 class="section-title">推荐占卜师</h2>
                 <div class="readers-circle-grid">
                     <?php foreach ($featured_readers as $reader): ?>
                         <div class="reader-circle-card">
                             <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-circle-link">
                                 <div class="reader-circle-photo">
-                                    <?php if (!empty($reader['photo_circle'])): ?>
-                                        <img src="<?php echo htmlspecialchars($reader['photo_circle']); ?>"
-                                             alt="<?php echo htmlspecialchars($reader['full_name']); ?>"
-                                             onerror="this.style.display='none'; this.parentNode.querySelector('.default-circle-photo').style.display='flex';">
-                                    <?php elseif (!empty($reader['photo'])): ?>
-                                        <img src="<?php echo htmlspecialchars($reader['photo']); ?>"
-                                             alt="<?php echo htmlspecialchars($reader['full_name']); ?>"
-                                             onerror="this.style.display='none'; this.parentNode.querySelector('.default-circle-photo').style.display='flex';">
-                                    <?php endif; ?>
-                                    <div class="default-circle-photo" style="display: <?php echo (!empty($reader['photo_circle']) || !empty($reader['photo'])) ? 'none' : 'flex'; ?>;">
-                                        <i class="icon-user">👤</i>
-                                    </div>
+                                    <?php
+                                    $photoSrc = getReaderPhotoUrl($reader, true);
+                                    ?>
+                                    <img src="<?php echo htmlspecialchars($photoSrc); ?>"
+                                         alt="<?php echo htmlspecialchars($reader['full_name']); ?>">
                                 </div>
 
                                 <div class="reader-circle-info">
                                     <h3 class="reader-name">
                                         <?php echo htmlspecialchars($reader['full_name']); ?>
                                         <?php
-                                        // 首页推荐塔罗师不显示"推荐塔罗师"标签，只显示普通塔罗师的标签
+                                        // 首页推荐占卜师不显示"推荐占卜师"标签，只显示普通占卜师的标签
                                         if (!$reader['is_featured']) {
                                             require_once 'includes/level_badge.php';
-                                            echo getReaderLevelBadgeHTML('塔罗师', 'small');
+                                            echo getReaderLevelBadgeHTML('占卜师', 'small');
                                         }
                                         ?>
                                     </h3>
                                     <p class="reader-experience">从业 <?php echo htmlspecialchars($reader['experience_years']); ?> 年</p>
+
+                                    <!-- 占卜师身份标签 -->
+                                    <?php echo DivinationTagHelper::generateTagsContainer($reader, 'center', true, false); ?>
                                 </div>
                             </a>
                         </div>
@@ -92,7 +90,7 @@ $featured_readers = getFeaturedReaders();
                 </div>
 
                 <div class="section-footer">
-                    <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-outline">查看更多塔罗师</a>
+                    <a href="<?php echo SITE_URL; ?>/readers.php" class="btn btn-outline">查看更多占卜师</a>
                 </div>
             </div>
         </section>

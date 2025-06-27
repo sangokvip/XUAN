@@ -402,8 +402,11 @@ $pageTitle = '浏览记录';
             <?php else: ?>
                 <?php foreach ($browseHistory as $history): ?>
                     <div class="history-item">
-                        <img src="../<?php echo h($history['photo_circle'] ?: ($history['photo'] ?: 'img/tm.jpg')); ?>" 
-                             alt="<?php echo h($history['full_name']); ?>" 
+                        <?php
+                        $photoSrc = getReaderPhotoUrl($history, true, '../');
+                        ?>
+                        <img src="<?php echo h($photoSrc); ?>"
+                             alt="<?php echo h($history['full_name']); ?>"
                              class="reader-avatar">
                         
                         <div class="reader-info">

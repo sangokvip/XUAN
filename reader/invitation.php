@@ -3,7 +3,7 @@ session_start();
 require_once '../config/config.php';
 require_once '../includes/InvitationManager.php';
 
-// 检查塔罗师登录
+// 检查占卜师登录
 requireReaderLogin('../auth/reader_login.php');
 
 $readerId = $_SESSION['reader_id'];
@@ -43,9 +43,9 @@ $pageTitle = '邀请管理';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle; ?> - 塔罗师后台</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
-    <link rel="stylesheet" href="../assets/css/reader.css">
+    <title><?php echo $pageTitle; ?> - 占卜师后台</title>
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo time(); ?>">
+    <link rel="stylesheet" href="../assets/css/reader-new.css?v=<?php echo time(); ?>">
     <style>
         .invitation-container {
             max-width: 1000px;
@@ -228,12 +228,29 @@ $pageTitle = '邀请管理';
     </style>
 </head>
 <body>
-    <?php include '../includes/header.php'; ?>
-    
-    <div class="invitation-container">
+    <?php include '../includes/reader_header.php'; ?>
+
+    <!-- 移动端导航 -->
+    <div class="mobile-nav">
+        <?php include '../includes/reader_mobile_nav.php'; ?>
+    </div>
+
+    <div class="reader-container">
+        <div class="reader-sidebar">
+            <div class="reader-sidebar-header">
+                <h3>占卜师后台</h3>
+            </div>
+            <div class="reader-sidebar-nav">
+                <?php include '../includes/reader_sidebar.php'; ?>
+            </div>
+        </div>
+
+        <div class="reader-content">
+            <div class="reader-content-inner">
+            <div class="invitation-container">
         <div class="page-header">
             <h1>🎯 邀请管理</h1>
-            <p>邀请新用户和塔罗师注册，获得返点奖励</p>
+            <p>邀请新用户和占卜师注册，获得返点奖励</p>
         </div>
         
         <!-- 统计数据 -->
@@ -244,7 +261,7 @@ $pageTitle = '邀请管理';
             </div>
             <div class="stat-card">
                 <div class="stat-number"><?php echo number_format($stats['invited_readers']); ?></div>
-                <div class="stat-label">邀请塔罗师数</div>
+                <div class="stat-label">邀请占卜师数</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number"><?php echo number_format($stats['total_commission']); ?></div>
@@ -269,7 +286,7 @@ $pageTitle = '邀请管理';
             </div>
             
             <div class="link-group">
-                <label class="link-label">邀请塔罗师注册链接</label>
+                <label class="link-label">邀请占卜师注册链接</label>
                 <div class="link-input">
                     <input type="text" value="<?php echo h($readerInvitationUrl); ?>" readonly id="readerInviteLink">
                     <button class="copy-btn" onclick="copyToClipboard('readerInviteLink')">复制链接</button>
@@ -282,7 +299,7 @@ $pageTitle = '邀请管理';
             <div class="tips-title">💡 返点规则说明</div>
             <ul class="tips-list">
                 <li>邀请用户注册：被邀请用户每次消费，您获得 <?php echo $invitationManager->getCommissionRate(); ?>% 返点</li>
-                <li>邀请塔罗师注册：被邀请塔罗师每次收益，您获得 <?php echo $invitationManager->getReaderInvitationCommissionRate(); ?>% 返点（四舍五入取整数）</li>
+                <li>邀请占卜师注册：被邀请占卜师每次收益，您获得 <?php echo $invitationManager->getReaderInvitationCommissionRate(); ?>% 返点（四舍五入取整数）</li>
                 <li>返点会自动发放到您的Tata Coin账户</li>
                 <li>邀请链接永久有效，可重复使用</li>
             </ul>
@@ -330,11 +347,11 @@ $pageTitle = '邀请管理';
                 <?php endif; ?>
 
                 <?php if (!empty($invitedUsersDetails['readers'])): ?>
-                    <h4 style="color: #f59e0b; margin: 25px 0 15px 0;">🔮 被邀请塔罗师 (<?php echo count($invitedUsersDetails['readers']); ?>人)</h4>
+                    <h4 style="color: #f59e0b; margin: 25px 0 15px 0;">🔮 被邀请占卜师 (<?php echo count($invitedUsersDetails['readers']); ?>人)</h4>
                     <table class="commission-table">
                         <thead>
                             <tr>
-                                <th>塔罗师名</th>
+                                <th>占卜师名</th>
                                 <th>邮箱</th>
                                 <th>注册时间</th>
                                 <th>收益总额</th>
@@ -389,7 +406,7 @@ $pageTitle = '邀请管理';
                                 <td><?php echo h($record['invitee_name']); ?></td>
                                 <td>
                                     <span style="color: <?php echo $record['invitee_type'] === 'user' ? '#3b82f6' : '#f59e0b'; ?>;">
-                                        <?php echo $record['invitee_type'] === 'user' ? '用户' : '塔罗师'; ?>
+                                        <?php echo $record['invitee_type'] === 'user' ? '用户' : '占卜师'; ?>
                                     </span>
                                 </td>
                                 <td>
@@ -422,5 +439,9 @@ $pageTitle = '邀请管理';
             }
         }
     </script>
+        </div> <!-- invitation-container -->
+            </div> <!-- reader-content-inner -->
+        </div> <!-- reader-content -->
+    </div> <!-- reader-container -->
 </body>
 </html>

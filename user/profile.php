@@ -81,11 +81,34 @@ $pageTitle = '编辑个人资料';
     <link rel="stylesheet" href="../assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
         .profile-container {
             max-width: 600px;
             margin: 40px auto;
             padding: 20px;
             font-family: 'Inter', sans-serif;
+        }
+
+        /* 添加页面加载动画 */
+        .profile-form {
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         .profile-header {
@@ -218,33 +241,139 @@ $pageTitle = '编辑个人资料';
         }
         
         .form-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e5e7eb;
         }
-        
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .btn-back {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 50px;
+        }
+
+        .btn-back:hover {
+            background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 50px;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            transform: translateY(-1px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-secondary.password {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .btn-secondary.password:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        }
+
+        .btn-secondary.avatar {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .btn-secondary.avatar:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        /* 按钮图标样式 */
+        .action-buttons a {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-buttons a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-buttons a:hover::before {
+            left: 100%;
+        }
+
         @media (max-width: 768px) {
             .profile-container {
                 margin: 20px auto;
                 padding: 15px;
             }
-            
+
             .profile-form {
                 padding: 25px 20px;
             }
-            
-            .form-actions {
-                flex-direction: column;
-                gap: 15px;
+
+            .action-buttons {
+                grid-template-columns: 1fr;
+                gap: 12px;
             }
-            
+
+            .btn-back,
             .btn-secondary {
-                margin-right: 0;
                 width: 100%;
-                text-align: center;
+                padding: 16px 20px;
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .profile-header {
+                padding: 20px;
+            }
+
+            .profile-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .profile-form {
+                padding: 20px 15px;
             }
         }
     </style>
@@ -311,10 +440,16 @@ $pageTitle = '编辑个人资料';
             </form>
             
             <div class="form-actions">
-                <a href="index.php" class="btn-secondary">← 返回用户中心</a>
-                <div>
-                    <a href="change_password.php" class="btn-secondary">🔐 修改密码</a>
-                    <a href="upload_avatar.php" class="btn-secondary">📷 更换头像</a>
+                <div class="action-buttons">
+                    <a href="index.php" class="btn-back">
+                        ← 返回用户中心
+                    </a>
+                    <a href="change_password.php" class="btn-secondary password">
+                        🔐 修改密码
+                    </a>
+                    <a href="upload_avatar.php" class="btn-secondary avatar">
+                        📷 更换头像
+                    </a>
                 </div>
             </div>
         </div>

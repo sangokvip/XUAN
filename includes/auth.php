@@ -303,7 +303,22 @@ function registerReader($data, $token = null, $inviteToken = null) {
         // 如果没有上传照片，根据性别设置默认头像
         $photo = $data['photo'] ?? null;
         if (empty($photo)) {
-            $photo = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+            // 使用新的默认头像系统（m1-m4或f1-f4）
+            $avatarNum = rand(1, 4);
+            $photo = $data['gender'] === 'male' ? "img/m{$avatarNum}.jpg" : "img/f{$avatarNum}.jpg";
+        }
+
+        // 处理占卜类型数据
+        $divinationTypesJson = null;
+        $identityCategory = null;
+        if (!empty($data['divination_types'])) {
+            $divinationTypesJson = json_encode($data['divination_types']);
+
+            // 根据主要身份标签确定类别
+            if (!empty($data['primary_identity'])) {
+                require_once __DIR__ . '/DivinationConfig.php';
+                $identityCategory = DivinationConfig::getDivinationCategory($data['primary_identity']);
+            }
         }
 
         $readerId = $db->insert('readers', [
@@ -317,7 +332,11 @@ function registerReader($data, $token = null, $inviteToken = null) {
             'specialties' => $data['specialties'] ?? null,
             'description' => $data['description'] ?? null,
             'photo' => $photo,
-            'photo_circle' => $data['photo_circle'] ?? null
+            'photo_circle' => $data['photo_circle'] ?? null,
+            'nationality' => $data['nationality'] ?? null,
+            'divination_types' => $divinationTypesJson,
+            'primary_identity' => $data['primary_identity'] ?? null,
+            'identity_category' => $identityCategory
         ]);
 
         // 处理邀请关系

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>头像剪裁测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007cba;
+            padding-bottom: 10px;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .upload-area:hover {
+            border-color: #007cba;
+            background: #f8f9fa;
+        }
+        .preview-area {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        .preview-item {
+            text-align: center;
+        }
+        .preview-item img {
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+        .preview-item.circle img {
+            border-radius: 50%;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007cba;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px 0 0;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #005a8b;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖼️ 头像剪裁功能测试</h1>
+        
+        <div class="upload-area">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <p>点击选择图片文件</p>
+            <button class="btn" onclick="document.getElementById('imageInput').click()">选择图片</button>
+        </div>
+        
+        <div class="preview-area" id="previewArea" style="display: none;">
+            <div class="preview-item">
+                <img id="originalPreview" src="" alt="原始图片">
+                <p>原始图片</p>
+            </div>
+            <div class="preview-item circle">
+                <img id="circlePreview" src="" alt="圆形头像">
+                <p>圆形头像</p>
+            </div>
+        </div>
+        
+        <button class="btn" id="cropBtn" style="display: none;" onclick="cropImage()">重新剪裁</button>
+        
+        <div class="log" id="logArea">
+            <strong>日志信息：</strong><br>
+        </div>
+    </div>
+
+    <script>
+        let currentFile = null;
+        
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            const time = new Date().toLocaleTimeString();
+            logArea.innerHTML += `[${time}] ${message}<br>`;
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(message);
+        }
+        
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            currentFile = file;
+            log(`选择了文件: ${file.name}, 大小: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+            
+            // 显示原始图片
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const originalPreview = document.getElementById('originalPreview');
+                originalPreview.src = e.target.result;
+                document.getElementById('previewArea').style.display = 'flex';
+                log('原始图片预览已显示');
+                
+                // 自动进行圆形剪裁
+                setTimeout(() => {
+                    cropImage();
+                }, 100);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        function cropImage() {
+            if (!currentFile) {
+                log('错误: 没有选择文件');
+                return;
+            }
+            
+            log('开始圆形剪裁...');
+            
+            createSimpleCircleCrop(currentFile)
+                .then(blob => {
+                    log(`剪裁成功! Blob大小: ${(blob.size / 1024).toFixed(2)}KB`);
+                    
+                    // 显示圆形预览
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const circlePreview = document.getElementById('circlePreview');
+                        circlePreview.src = e.target.result;
+                        document.getElementById('cropBtn').style.display = 'inline-block';
+                        log('圆形头像预览已显示');
+                    };
+                    reader.readAsDataURL(blob);
+                })
+                .catch(error => {
+                    log(`剪裁失败: ${error.message}`);
+                });
+        }
+        
+        // 简单的Canvas圆形剪裁函数
+        function createSimpleCircleCrop(file) {
+            return new Promise((resolve, reject) => {
+                log('创建FileReader...');
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    log('FileReader加载完成，创建Image对象...');
+                    const img = new Image();
+                    
+                    img.onload = function() {
+                        log(`图片加载完成: ${img.width}x${img.height}`);
+                        
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            const size = 300;
+                            
+                            canvas.width = size;
+                            canvas.height = size;
+                            log(`Canvas创建完成: ${size}x${size}`);
+                            
+                            // 计算缩放比例，确保图片完全填充圆形
+                            const scale = Math.max(size / img.width, size / img.height);
+                            const scaledWidth = img.width * scale;
+                            const scaledHeight = img.height * scale;
+                            const x = (size - scaledWidth) / 2;
+                            const y = (size - scaledHeight) / 2;
+                            
+                            log(`缩放参数: scale=${scale.toFixed(2)}, scaledSize=${scaledWidth.toFixed(0)}x${scaledHeight.toFixed(0)}, position=(${x.toFixed(0)}, ${y.toFixed(0)})`);
+                            
+                            // 创建圆形剪裁路径
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                            ctx.clip();
+                            
+                            // 绘制图片
+                            ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+                            ctx.restore();
+                            
+                            log('图片绘制完成，转换为Blob...');
+                            
+                            // 转换为Blob
+                            canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                        } catch (error) {
+                            log(`Canvas操作失败: ${error.message}`);
+                            reject(error);
+                        }
+                    };
+                    
+                    img.onerror = function() {
+                        const error = new Error('图片加载失败');
+                        log(`图片加载失败`);
+                        reject(error);
+                    };
+                    
+                    img.src = e.target.result;
+                };
+                
+                reader.onerror = function() {
+                    const error = new Error('文件读取失败');
+                    log(`文件读取失败`);
+                    reject(error);
+                };
+                
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        log('页面加载完成，等待用户选择图片...');
+    </script>
+</body>
+</html>

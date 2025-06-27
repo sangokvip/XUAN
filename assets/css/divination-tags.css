@@ -1,0 +1,894 @@
+/**
+ * 占卜师身份标签样式
+ * 用于显示占卜师的主要身份标签和技能标签
+ */
+
+/* 最高优先级：强制移除所有divination-tag的下划线 */
+* a.divination-tag,
+* a.divination-tag:link,
+* a.divination-tag:visited,
+* a.divination-tag:hover,
+* a.divination-tag:active,
+* a.divination-tag:focus,
+* .divination-tag,
+* .divination-tag a {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    text-underline-offset: unset !important;
+    text-decoration-line: none !important;
+    text-decoration-style: none !important;
+    text-decoration-color: transparent !important;
+    text-decoration-thickness: 0 !important;
+    border-bottom-width: 0 !important;
+    border-bottom-style: none !important;
+    border-bottom-color: transparent !important;
+}
+
+/* 浏览器默认样式重置 */
+a.divination-tag {
+    -webkit-text-decoration: none !important;
+    -moz-text-decoration: none !important;
+    -ms-text-decoration: none !important;
+    -o-text-decoration: none !important;
+    text-decoration: none !important;
+}
+
+/* 针对可能的继承样式 */
+.reader-name a.divination-tag,
+h3 a.divination-tag,
+h1 a.divination-tag {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* 基础标签样式 */
+.divination-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    text-align: center;
+    white-space: nowrap;
+    margin: 2px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 西玄标签 - 紫色系 */
+.divination-tag-western {
+    background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+    border: 1px solid #7c3aed;
+}
+
+.divination-tag-western:hover {
+    background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* 东玄标签 - 黑色系 */
+.divination-tag-eastern {
+    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    border: 1px solid #1f2937;
+}
+
+.divination-tag-eastern:hover {
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(55, 65, 81, 0.3);
+}
+
+/* 默认标签样式 */
+.divination-tag-default {
+    background: linear-gradient(135deg, #6b7280 0%, #9ca3af 100%);
+    border: 1px solid #4b5563;
+}
+
+/* 主要身份标签 */
+.divination-tag.primary-tag {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+    margin-right: 8px;
+}
+
+.divination-tag.primary-tag::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.divination-tag.primary-tag:hover::before {
+    left: 100%;
+}
+
+/* 技能标签 */
+.divination-tag.skill-tag {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    opacity: 0.9;
+    margin-right: 6px;
+}
+
+/* 标签容器 */
+.divination-tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin: 8px 0;
+}
+
+.divination-tags-container.center {
+    justify-content: center;
+}
+
+.divination-tags-container.left {
+    justify-content: flex-start;
+}
+
+.divination-tags-container.right {
+    justify-content: flex-end;
+}
+
+/* 标签组 */
+.divination-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.divination-tag-group .primary-tag {
+    margin-right: 8px;
+}
+
+/* 标签分隔符 */
+.divination-tag-separator {
+    color: #9ca3af;
+    font-weight: 500;
+    margin: 0 8px;
+    font-size: 0.9rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .divination-tag {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        margin-right: 4px;
+    }
+
+    .divination-tag.primary-tag {
+        font-size: 0.85rem;
+        padding: 6px 14px;
+        margin-right: 6px;
+    }
+
+    .divination-tag.skill-tag {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        margin-right: 4px;
+    }
+
+    .divination-identity-section {
+        padding: 15px;
+        margin: 15px 0;
+    }
+
+    .divination-identity-section h3 {
+        font-size: 1rem;
+    }
+
+    /* 移动端reader标签样式统一 */
+
+    /* 移动端占卜师列表页标签 */
+    .readers-grid .divination-tag.primary-tag,
+    .readers-grid .divination-tag.skill-tag {
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+        text-decoration: none !important;
+        border-bottom: none !important;
+        vertical-align: middle !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        line-height: 1.2 !important;
+        display: inline-block !important;
+    }
+
+    /* 移动端标签页面占卜师卡片中的标签 */
+    .reader-card .divination-tag.primary-tag,
+    .reader-card .divination-tag.skill-tag {
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        margin: 1px 2px !important;
+    }
+
+    /* 移动端占卜师详情页标题中的标签 */
+    .reader-info-section h1 .divination-tag.primary-tag,
+    .reader-info-section h1 .divination-tag.skill-tag {
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+        vertical-align: middle !important;
+        text-decoration: none !important;
+        border-bottom: none !important;
+        display: inline-block !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+        position: static !important;
+        top: auto !important;
+        line-height: 1.2 !important;
+    }
+}
+
+/* 特殊场景样式 */
+
+/* 首页推荐占卜师标签 */
+.reader-card .divination-tags-container {
+    margin-top: 8px;
+    justify-content: center;
+}
+
+/* 移除冲突的通用样式，使用下面的特定样式 */
+
+/* 占卜师列表页标签 */
+.readers-grid .divination-tags-container {
+    margin-top: 6px;
+    justify-content: center;
+}
+
+/* 占卜师详情页标签 */
+.reader-profile .divination-tags-container {
+    margin: 15px 0;
+    justify-content: flex-start;
+    gap: 8px;
+}
+
+/* 移除冲突的reader-profile样式，统一使用reader-info-section样式 */
+
+/* 占卜师详情页标题中的标签 - 最高优先级 */
+.reader-info-section h1 .divination-tag.primary-tag,
+.reader-info-section h1 .divination-tag.skill-tag,
+.reader-info-section h1 a.divination-tag.primary-tag,
+.reader-info-section h1 a.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    display: inline-block !important;
+    border-radius: 10px !important;
+    font-weight: bold !important;
+    position: static !important;
+    top: auto !important;
+    line-height: 1.2 !important;
+    opacity: 1 !important;
+}
+
+
+
+/* 占卜师列表页标签 - 最高优先级 */
+.readers-grid .divination-tags-container .divination-tag.primary-tag,
+.readers-grid .divination-tags-container .divination-tag.skill-tag,
+.readers-grid .divination-tag.primary-tag,
+.readers-grid .divination-tag.skill-tag,
+.readers-grid a.divination-tag.primary-tag,
+.readers-grid a.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    display: inline-block !important;
+    line-height: 1.2 !important;
+    font-weight: bold !important;
+    border-radius: 10px !important;
+    opacity: 1 !important;
+}
+
+/* 标签页面头部标签 */
+.tag-header .divination-tag.primary-tag {
+    font-size: 1.2rem !important;
+    padding: 8px 16px !important;
+    margin-right: 15px !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    display: inline-block !important;
+    border-radius: 15px !important;
+    font-weight: bold !important;
+}
+
+/* 标签页面占卜师卡片中的标签 - 最高优先级 */
+.reader-card .divination-tags-container .divination-tag.primary-tag,
+.reader-card .divination-tags-container .divination-tag.skill-tag,
+.reader-card .divination-tag.primary-tag,
+.reader-card .divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin: 1px 2px !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    display: inline-block !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    line-height: 1.2 !important;
+    opacity: 1 !important;
+}
+
+/* 管理后台标签 */
+.admin-table .divination-tag.primary-tag,
+.admin-table .divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin: 1px 2px 1px 0 !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    line-height: 1.2 !important;
+}
+
+/* 管理后台标签容器 */
+.admin-table {
+    white-space: normal !important;
+    max-width: 180px !important;
+    line-height: 1.4 !important;
+    padding: 8px !important;
+}
+
+.admin-table .divination-tag:last-child {
+    margin-right: 0 !important;
+}
+
+/* 管理后台表格优化 */
+.table td.admin-table {
+    vertical-align: top !important;
+    word-wrap: break-word !important;
+}
+
+/* 标签说明 */
+.divination-tags-legend {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.divination-tags-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.divination-tags-legend .divination-tag {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+}
+
+/* 动画效果 */
+@keyframes tagFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.divination-tag {
+    animation: tagFadeIn 0.3s ease-out;
+}
+
+.divination-tag:nth-child(1) { animation-delay: 0s; }
+.divination-tag:nth-child(2) { animation-delay: 0.1s; }
+.divination-tag:nth-child(3) { animation-delay: 0.2s; }
+.divination-tag:nth-child(4) { animation-delay: 0.3s; }
+
+/* 悬浮提示 */
+.divination-tag[title]:not(.clickable) {
+    cursor: help;
+}
+
+/* 可点击标签 */
+.divination-tag.clickable {
+    cursor: pointer !important;
+    transition: all 0.3s ease;
+    text-decoration: none !important;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    z-index: 10;
+    pointer-events: auto !important;
+}
+
+/* 强制确保链接可点击 */
+a.divination-tag.clickable {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    text-decoration: none !important;
+    color: white !important;
+}
+
+a.divination-tag.clickable:hover,
+a.divination-tag.clickable:focus,
+a.divination-tag.clickable:active,
+a.divination-tag.clickable:visited {
+    text-decoration: none !important;
+    color: white !important;
+}
+
+/* 强制移除所有标签链接的下划线 */
+a.divination-tag,
+a.divination-tag:hover,
+a.divination-tag:focus,
+a.divination-tag:active,
+a.divination-tag:visited,
+a.divination-tag:link {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    text-underline-offset: unset !important;
+    text-decoration-line: none !important;
+    text-decoration-style: none !important;
+    text-decoration-color: transparent !important;
+}
+
+/* 额外的全局强制样式 */
+.divination-tag {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+.divination-tag a,
+a.divination-tag {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+/* 超级强力的下划线移除规则 */
+a.divination-tag,
+a.divination-tag:link,
+a.divination-tag:visited,
+a.divination-tag:hover,
+a.divination-tag:active,
+a.divination-tag:focus,
+.divination-tag,
+.divination-tag:link,
+.divination-tag:visited,
+.divination-tag:hover,
+.divination-tag:active,
+.divination-tag:focus {
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+    text-decoration-style: none !important;
+    text-decoration-color: transparent !important;
+    text-decoration-thickness: 0 !important;
+    text-underline-offset: 0 !important;
+    border-bottom: none !important;
+    border-bottom-width: 0 !important;
+    border-bottom-style: none !important;
+    border-bottom-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.divination-tag.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    text-decoration: none;
+    color: white;
+    filter: brightness(1.1);
+}
+
+.divination-tag.clickable:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.divination-tag.clickable:visited {
+    color: white;
+    text-decoration: none;
+}
+
+.divination-tag.clickable:focus {
+    outline: none;
+    text-decoration: none;
+    color: white;
+}
+
+/* 点击波纹效果 */
+.divination-tag.clickable::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.divination-tag.clickable:active::after {
+    width: 120%;
+    height: 120%;
+}
+
+/* ========================================
+   最高优先级样式 - 覆盖所有其他样式
+   ======================================== */
+
+/* 强制覆盖所有页面的标签样式 */
+.reader-card .divination-tag,
+.reader-card .divination-tag.primary-tag,
+.reader-card .divination-tag.skill-tag,
+.reader-card a.divination-tag,
+.reader-card a.divination-tag.primary-tag,
+.reader-card a.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin: 1px 2px !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    display: inline-block !important;
+    border-radius: 8px !important;
+    font-weight: bold !important;
+    line-height: 1.2 !important;
+    opacity: 1 !important;
+}
+
+.reader-info-section h1 .divination-tag,
+.reader-info-section h1 .divination-tag.primary-tag,
+.reader-info-section h1 .divination-tag.skill-tag,
+.reader-info-section h1 a.divination-tag,
+.reader-info-section h1 a.divination-tag.primary-tag,
+.reader-info-section h1 a.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    display: inline-block !important;
+    border-radius: 10px !important;
+    font-weight: bold !important;
+    position: static !important;
+    top: auto !important;
+    line-height: 1.2 !important;
+    opacity: 1 !important;
+}
+
+.readers-grid .divination-tag,
+.readers-grid .divination-tag.primary-tag,
+.readers-grid .divination-tag.skill-tag,
+.readers-grid a.divination-tag,
+.readers-grid a.divination-tag.primary-tag,
+.readers-grid a.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    display: inline-block !important;
+    line-height: 1.2 !important;
+    font-weight: bold !important;
+    border-radius: 10px !important;
+    opacity: 1 !important;
+}
+
+/* 标签计数 */
+.divination-tag-count {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 1px 6px;
+    margin-left: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+/* 空状态 */
+.divination-tags-empty {
+    color: #9ca3af;
+    font-style: italic;
+    font-size: 0.8rem;
+    padding: 8px 0;
+}
+
+/* 标签编辑模式 */
+.divination-tags-edit {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 10px;
+    background: #f9fafb;
+}
+
+.divination-tags-edit .divination-tag {
+    position: relative;
+}
+
+.divination-tags-edit .divination-tag .remove-tag {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 16px;
+    height: 16px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.divination-tags-edit .divination-tag:hover .remove-tag {
+    opacity: 1;
+}
+
+/* 移动端强制样式覆盖 */
+@media (max-width: 768px) {
+    .reader-card .divination-tag,
+    .reader-card .divination-tag.primary-tag,
+    .reader-card .divination-tag.skill-tag,
+    .reader-card .divination-tag-western,
+    .reader-card .divination-tag-eastern,
+    .reader-card .divination-tag-default,
+    .reader-card .divination-tag-western.primary-tag,
+    .reader-card .divination-tag-eastern.primary-tag,
+    .reader-card .divination-tag-default.primary-tag,
+    .reader-card .divination-tag-western.skill-tag,
+    .reader-card .divination-tag-eastern.skill-tag,
+    .reader-card .divination-tag-default.skill-tag,
+    .reader-card a.divination-tag,
+    .reader-card a.divination-tag.primary-tag,
+    .reader-card a.divination-tag.skill-tag,
+    .reader-card span.divination-tag,
+    .reader-card span.divination-tag.primary-tag,
+    .reader-card span.divination-tag.skill-tag {
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        margin: 1px 2px !important;
+    }
+
+    .reader-info-section h1 .divination-tag,
+    .reader-info-section h1 .divination-tag.primary-tag,
+    .reader-info-section h1 .divination-tag.skill-tag,
+    .reader-info-section h1 .divination-tag-western,
+    .reader-info-section h1 .divination-tag-eastern,
+    .reader-info-section h1 .divination-tag-default,
+    .reader-info-section h1 .divination-tag-western.primary-tag,
+    .reader-info-section h1 .divination-tag-eastern.primary-tag,
+    .reader-info-section h1 .divination-tag-default.primary-tag,
+    .reader-info-section h1 .divination-tag-western.skill-tag,
+    .reader-info-section h1 .divination-tag-eastern.skill-tag,
+    .reader-info-section h1 .divination-tag-default.skill-tag,
+    .reader-info-section h1 a.divination-tag,
+    .reader-info-section h1 a.divination-tag.primary-tag,
+    .reader-info-section h1 a.divination-tag.skill-tag,
+    .reader-info-section h1 span.divination-tag,
+    .reader-info-section h1 span.divination-tag.primary-tag,
+    .reader-info-section h1 span.divination-tag.skill-tag {
+        font-size: 9px !important;
+        padding: 1px 4px !important;
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+    }
+
+    /* 移动端readers页面标签 - 与specialty-tag保持一致 */
+    .readers-grid .reader-name .divination-tag,
+    .readers-grid .reader-name .divination-tag.primary-tag,
+    .readers-grid .reader-name .divination-tag.skill-tag,
+    .readers-grid .reader-name .divination-tag-western,
+    .readers-grid .reader-name .divination-tag-eastern,
+    .readers-grid .reader-name .divination-tag-default,
+    .readers-grid .reader-name .divination-tag-western.primary-tag,
+    .readers-grid .reader-name .divination-tag-eastern.primary-tag,
+    .readers-grid .reader-name .divination-tag-default.primary-tag,
+    .readers-grid .reader-name .divination-tag-western.skill-tag,
+    .readers-grid .reader-name .divination-tag-eastern.skill-tag,
+    .readers-grid .reader-name .divination-tag-default.skill-tag,
+    .readers-grid .reader-name a.divination-tag,
+    .readers-grid .reader-name a.divination-tag.primary-tag,
+    .readers-grid .reader-name a.divination-tag.skill-tag,
+    .readers-grid .reader-name span.divination-tag,
+    .readers-grid .reader-name span.divination-tag.primary-tag,
+    .readers-grid .reader-name span.divination-tag.skill-tag {
+        font-size: 10px !important; /* 与specialty-tag移动端一致 */
+        padding: 3px 6px !important; /* 与specialty-tag移动端一致 */
+        margin-left: 4px !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* 超小屏幕适配 - 与specialty-tag保持一致 */
+@media (max-width: 480px) {
+    .readers-grid .reader-name .divination-tag,
+    .readers-grid .reader-name .divination-tag.primary-tag,
+    .readers-grid .reader-name .divination-tag.skill-tag,
+    .readers-grid .reader-name .divination-tag-western,
+    .readers-grid .reader-name .divination-tag-eastern,
+    .readers-grid .reader-name .divination-tag-default,
+    .readers-grid .reader-name .divination-tag-western.primary-tag,
+    .readers-grid .reader-name .divination-tag-eastern.primary-tag,
+    .readers-grid .reader-name .divination-tag-default.primary-tag,
+    .readers-grid .reader-name .divination-tag-western.skill-tag,
+    .readers-grid .reader-name .divination-tag-eastern.skill-tag,
+    .readers-grid .reader-name .divination-tag-default.skill-tag,
+    .readers-grid .reader-name a.divination-tag,
+    .readers-grid .reader-name a.divination-tag.primary-tag,
+    .readers-grid .reader-name a.divination-tag.skill-tag,
+    .readers-grid .reader-name span.divination-tag,
+    .readers-grid .reader-name span.divination-tag.primary-tag,
+    .readers-grid .reader-name span.divination-tag.skill-tag {
+        font-size: 9px !important; /* 与specialty-tag超小屏幕一致 */
+        padding: 2px 5px !important; /* 与specialty-tag超小屏幕一致 */
+        border-radius: 8px !important; /* 与specialty-tag超小屏幕一致 */
+    }
+}
+
+/* Tag_readers页面标签样式 - 强制覆盖所有可能的标签类 */
+html body .reader-card .divination-tag,
+html body .reader-card .divination-tag.primary-tag,
+html body .reader-card .divination-tag.skill-tag,
+html body .reader-card .divination-tag-western,
+html body .reader-card .divination-tag-eastern,
+html body .reader-card .divination-tag-default,
+html body .reader-card .divination-tag-western.primary-tag,
+html body .reader-card .divination-tag-eastern.primary-tag,
+html body .reader-card .divination-tag-default.primary-tag,
+html body .reader-card .divination-tag-western.skill-tag,
+html body .reader-card .divination-tag-eastern.skill-tag,
+html body .reader-card .divination-tag-default.skill-tag,
+html body .reader-card a.divination-tag,
+html body .reader-card a.divination-tag.primary-tag,
+html body .reader-card a.divination-tag.skill-tag,
+html body .reader-card span.divination-tag,
+html body .reader-card span.divination-tag.primary-tag,
+html body .reader-card span.divination-tag.skill-tag {
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    margin: 1px 2px !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+    font-weight: bold !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    color: white !important; /* 确保文字颜色可见 */
+    opacity: 1 !important; /* 确保不透明 */
+}
+
+/* Reader页面标签样式 - 强制覆盖所有可能的标签类，参考readers页面大小 */
+html body .reader-info-section h1 .divination-tag,
+html body .reader-info-section h1 .divination-tag.primary-tag,
+html body .reader-info-section h1 .divination-tag.skill-tag,
+html body .reader-info-section h1 .divination-tag-western,
+html body .reader-info-section h1 .divination-tag-eastern,
+html body .reader-info-section h1 .divination-tag-default,
+html body .reader-info-section h1 .divination-tag-western.primary-tag,
+html body .reader-info-section h1 .divination-tag-eastern.primary-tag,
+html body .reader-info-section h1 .divination-tag-default.primary-tag,
+html body .reader-info-section h1 .divination-tag-western.skill-tag,
+html body .reader-info-section h1 .divination-tag-eastern.skill-tag,
+html body .reader-info-section h1 .divination-tag-default.skill-tag,
+html body .reader-info-section h1 a.divination-tag,
+html body .reader-info-section h1 a.divination-tag.primary-tag,
+html body .reader-info-section h1 a.divination-tag.skill-tag,
+html body .reader-info-section h1 span.divination-tag,
+html body .reader-info-section h1 span.divination-tag.primary-tag,
+html body .reader-info-section h1 span.divination-tag.skill-tag {
+    font-size: 12px !important; /* 与readers页面一致 */
+    padding: 4px 10px !important; /* 与readers页面一致 */
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    border-radius: 10px !important;
+    display: inline-block !important;
+    font-weight: bold !important;
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    position: static !important;
+    top: auto !important;
+    color: white !important; /* 确保文字颜色可见 */
+    opacity: 1 !important; /* 确保不透明 */
+}
+
+/* Readers页面标签样式 - 与specialty-tag保持一致的大小 */
+html body .readers-grid .reader-name .divination-tag,
+html body .readers-grid .reader-name .divination-tag.primary-tag,
+html body .readers-grid .reader-name .divination-tag.skill-tag,
+html body .readers-grid .reader-name .divination-tag-western,
+html body .readers-grid .reader-name .divination-tag-eastern,
+html body .readers-grid .reader-name .divination-tag-default,
+html body .readers-grid .reader-name .divination-tag-western.primary-tag,
+html body .readers-grid .reader-name .divination-tag-eastern.primary-tag,
+html body .readers-grid .reader-name .divination-tag-default.primary-tag,
+html body .readers-grid .reader-name .divination-tag-western.skill-tag,
+html body .readers-grid .reader-name .divination-tag-eastern.skill-tag,
+html body .readers-grid .reader-name .divination-tag-default.skill-tag,
+html body .readers-grid .reader-name a.divination-tag,
+html body .readers-grid .reader-name a.divination-tag.primary-tag,
+html body .readers-grid .reader-name a.divination-tag.skill-tag,
+html body .readers-grid .reader-name span.divination-tag,
+html body .readers-grid .reader-name span.divination-tag.primary-tag,
+html body .readers-grid .reader-name span.divination-tag.skill-tag {
+    font-size: 12px !important; /* 与specialty-tag一致 */
+    padding: 4px 10px !important; /* 与specialty-tag一致 */
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    border-radius: 12px !important; /* 与specialty-tag一致 */
+    display: inline-block !important;
+    font-weight: 500 !important; /* 与specialty-tag一致 */
+    line-height: 1.2 !important;
+    vertical-align: middle !important;
+    text-decoration: none !important;
+    color: white !important; /* 确保文字颜色可见 */
+    opacity: 1 !important; /* 确保不透明 */
+    transition: all 0.3s ease !important; /* 与specialty-tag一致 */
+    border: 1px solid transparent !important; /* 与specialty-tag一致 */
+}
+
+/* Tag_readers页面标签样式 - 与readers页面保持一致 */
+html body .readers-grid .reader-name .divination-tag.primary-tag {
+    font-size: 12px !important; /* 与readers页面一致 */
+    padding: 4px 10px !important; /* 与readers页面一致 */
+    margin-left: 5px !important;
+    margin-right: 0 !important;
+    vertical-align: baseline !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+    position: relative !important;
+    top: -1px !important;
+}
+
+/* Tag_readers页面移动端标签样式 */
+@media (max-width: 768px) {
+    html body .readers-grid .reader-name .divination-tag.primary-tag {
+        font-size: 10px !important; /* 移动端稍小 */
+        padding: 3px 6px !important;
+        margin-left: 4px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    html body .readers-grid .reader-name .divination-tag.primary-tag {
+        font-size: 9px !important; /* 超小屏幕更小 */
+        padding: 2px 5px !important;
+        border-radius: 8px !important;
+    }
+}

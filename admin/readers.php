@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/DivinationTagHelper.php';
 
 // 检查管理员权限
 requireAdminLogin('../auth/admin_login.php');
@@ -19,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($reader) {
             $newStatus = $reader['is_featured'] ? 0 : 1;
             $db->update('readers', ['is_featured' => $newStatus], 'id = ?', [$readerId]);
-            $success = $newStatus ? '已设为推荐塔罗师' : '已取消推荐';
+            $success = $newStatus ? '已设为推荐占卜师' : '已取消推荐';
         }
     }
     
@@ -28,12 +29,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($reader) {
             $newStatus = $reader['is_active'] ? 0 : 1;
             $db->update('readers', ['is_active' => $newStatus], 'id = ?', [$readerId]);
-            $success = $newStatus ? '已激活塔罗师' : '已禁用塔罗师';
+            $success = $newStatus ? '已激活占卜师' : '已禁用占卜师';
         }
     }
 
     elseif ($action === 'delete_reader' && $readerId) {
-        // 获取塔罗师信息
+        // 获取占卜师信息
         $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
         if ($reader) {
             // 删除相关文件
@@ -67,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $success = '塔罗师已删除';
+            $success = '占卜师已删除';
         }
     }
 
@@ -78,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             foreach ($readerIds as $id) {
                 $id = (int)$id;
-                // 获取塔罗师信息
+                // 获取占卜师信息
                 $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$id]);
                 if ($reader) {
                     // 删除相关文件
@@ -116,11 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $success = "已删除 {$deletedCount} 个塔罗师";
+            $success = "已删除 {$deletedCount} 个占卜师";
         }
     }
 
     elseif ($action === 'auto_register') {
+        require_once '../includes/DivinationConfig.php';
+
         $count = (int)($_POST['register_count'] ?? 5);
         $count = max(1, min(50, $count)); // 限制在1-50之间
 
@@ -152,19 +155,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             '拥有敏锐直觉的神秘学者，通过塔罗牌与您的潜意识对话。',
             '月光下的预言家，用神圣的塔罗智慧为您指引人生方向。',
             '连接天地灵性的占卜大师，专注于解读生命中的神秘密码。',
-            '具有深厚玄学底蕴的塔罗师，善于洞察因果轮回的奥义。',
+            '具有深厚玄学底蕴的占卜师，善于洞察因果轮回的奥义。',
             '来自古老传承的智慧守护者，用塔罗牌为您解开心灵枷锁。',
             '拥有第六感天赋的神秘导师，专精于情感与命运的占卜解读。',
             '星座与塔罗的双重修行者，为您揭示宇宙中隐藏的真相。',
             '具有灵性觉醒能力的占卜师，用爱与光为您照亮前行的道路。',
-            '深谙东西方神秘学的塔罗大师，融合古老智慧与现代心理学。',
+            '深谙东西方神秘学的占卜大师，融合古老智慧与现代心理学。',
             '拥有纯净心灵的占卜天使，用温暖的能量为您传递宇宙的讯息。'
         ];
+
+        // 获取国籍列表
+        $nationalities = array_keys(DivinationConfig::getNationalities());
+
+        // 获取占卜类型
+        $allDivinationTypes = DivinationConfig::getAllDivinationTypes();
+        $westernTypes = array_keys($allDivinationTypes['western']['types']);
+        $easternTypes = array_keys($allDivinationTypes['eastern']['types']);
+        $allTypes = array_merge($westernTypes, $easternTypes);
+
+        // 联系方式模板
+        $wechatPrefixes = ['wx', 'wechat', 'tarot', 'mystic', 'star', 'moon', 'crystal'];
+        $qqNumbers = ['123456789', '987654321', '555666777', '888999000', '111222333'];
+        $xiaohongshuNames = ['塔罗星语', '神秘月影', '水晶占卜', '星辰指引', '灵性觉醒'];
+        $douyinNames = ['塔罗师', '占卜大师', '神秘学者', '星座达人', '灵性导师'];
+
         $createdCount = 0;
 
         for ($i = 1; $i <= $count; $i++) {
             $gender = $genders[array_rand($genders)];
-            $avatar = $gender === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
+
+            // 根据性别从新的头像中随机选择
+            if ($gender === 'male') {
+                $maleAvatars = ['img/m1.jpg', 'img/m2.jpg', 'img/m3.jpg', 'img/m4.jpg'];
+                $avatar = $maleAvatars[array_rand($maleAvatars)];
+            } else {
+                $femaleAvatars = ['img/f1.jpg', 'img/f2.jpg', 'img/f3.jpg', 'img/f4.jpg'];
+                $avatar = $femaleAvatars[array_rand($femaleAvatars)];
+            }
+
             $names = $gender === 'male' ? $maleNames : $femaleNames;
             $fullName = $names[array_rand($names)];
             $selectedSpecialties = array_rand(array_flip($specialties), rand(2, 5));
@@ -173,31 +201,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $description = $descriptions[array_rand($descriptions)];
 
+            // 随机选择国籍（80%中国，20%其他）
+            $nationality = rand(1, 10) <= 8 ? 'CN' : $nationalities[array_rand($nationalities)];
+
+            // 随机选择占卜类型（1-3个）
+            $selectedDivinationTypes = [];
+            $typeCount = rand(1, 3);
+            $shuffledTypes = $allTypes;
+            shuffle($shuffledTypes);
+            $selectedDivinationTypes = array_slice($shuffledTypes, 0, $typeCount);
+
+            // 选择主要身份标签
+            $primaryIdentity = $selectedDivinationTypes[array_rand($selectedDivinationTypes)];
+
+            // 生成自定义专长（30%概率）
+            $customSpecialties = '';
+            if (rand(1, 10) <= 3) {
+                $customTags = ['心理', '情感', '婚姻', '学业'];
+                shuffle($customTags);
+                $customSpecialties = implode('、', array_slice($customTags, 0, rand(1, 2)));
+            }
+
+            // 生成联系方式（随机填写部分）
+            $contactInfo = '专业占卜咨询，诚信服务，欢迎咨询预约。';
+            $wechat = rand(1, 10) <= 7 ? $wechatPrefixes[array_rand($wechatPrefixes)] . rand(100, 999) : null;
+            $qq = rand(1, 10) <= 5 ? $qqNumbers[array_rand($qqNumbers)] : null;
+            $xiaohongshu = rand(1, 10) <= 4 ? $xiaohongshuNames[array_rand($xiaohongshuNames)] . rand(10, 99) : null;
+            $douyin = rand(1, 10) <= 3 ? $douyinNames[array_rand($douyinNames)] . rand(100, 999) : null;
+            $otherContact = rand(1, 10) <= 2 ? '可提供线上线下咨询服务' : null;
+
+            // 基础字段数据（确保存在的字段）
             $readerData = [
                 'username' => 'reader' . time() . rand(100, 999),
                 'email' => 'reader' . time() . rand(100, 999) . '@example.com',
                 'password_hash' => password_hash('787878', PASSWORD_DEFAULT),
                 'full_name' => $fullName,
-                'phone' => '1' . rand(30, 89) . rand(10000000, 99999999),
-                'gender' => $gender,
                 'experience_years' => rand(1, 20),
                 'specialties' => implode('、', $selectedSpecialties),
                 'description' => $description,
-                'photo' => $avatar,
+                'is_featured' => rand(0, 3) === 0 ? 1 : 0, // 25%概率成为推荐占卜师
                 'is_active' => 1,
-                'is_featured' => rand(0, 3) === 0 ? 1 : 0, // 25%概率成为推荐塔罗师
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
-            if ($db->insert('readers', $readerData)) {
-                $createdCount++;
+            // 可选字段，如果存在则添加
+            $optionalFields = [
+                'phone' => '1' . rand(30, 89) . rand(10000000, 99999999),
+                'gender' => $gender,
+                'photo' => $avatar,
+                'photo_circle' => null,
+                'certificates' => null,
+                'price_list_image' => null,
+                'nationality' => $nationality,
+                'custom_specialties' => $customSpecialties,
+                'divination_types' => json_encode($selectedDivinationTypes),
+                'primary_identity' => $primaryIdentity,
+                'identity_category' => DivinationConfig::getDivinationCategory($primaryIdentity),
+                'contact_info' => $contactInfo,
+                'wechat' => $wechat,
+                'qq' => $qq,
+                'xiaohongshu' => $xiaohongshu,
+                'douyin' => $douyin,
+                'other_contact' => $otherContact,
+                'view_count' => rand(0, 1000),
+                'average_rating' => 0.00,
+                'total_reviews' => 0,
+                'tata_coin' => 0,
+                'registration_token' => null
+            ];
+
+            // 获取表的所有字段
+            try {
+                $columns = $db->fetchAll("SHOW COLUMNS FROM readers");
+                $existingFields = [];
+                foreach ($columns as $column) {
+                    $existingFields[] = $column['Field'];
+                }
+
+                // 只添加存在的可选字段
+                foreach ($optionalFields as $field => $value) {
+                    if (in_array($field, $existingFields)) {
+                        $readerData[$field] = $value;
+                    }
+                }
+
+                if ($db->insert('readers', $readerData)) {
+                    $createdCount++;
+                }
+            } catch (Exception $e) {
+                // 如果出错，尝试只用基础字段插入
+                try {
+                    if ($db->insert('readers', $readerData)) {
+                        $createdCount++;
+                    }
+                } catch (Exception $e2) {
+                    // 记录错误但继续
+                    error_log("创建占卜师失败: " . $e2->getMessage());
+                }
             }
 
             // 避免时间戳重复
             usleep(1000);
         }
 
-        $success = "成功创建 {$createdCount} 个测试塔罗师（密码：787878）";
+        $success = "成功创建 {$createdCount} 个测试占卜师（密码：787878）";
     }
 }
 
@@ -229,7 +336,7 @@ if ($featured === 'yes') {
     $whereClause .= " AND is_featured = 0";
 }
 
-// 获取塔罗师数据
+// 获取占卜师数据
 $offset = ($page - 1) * ADMIN_ITEMS_PER_PAGE;
 
 $readers = $db->fetchAll(
@@ -256,9 +363,10 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>塔罗师管理 - 管理后台</title>
+    <title>占卜师管理 - 管理后台</title>
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
+    <link rel="stylesheet" href="../assets/css/divination-tags.css">
 </head>
 <body>
     <?php include '../includes/admin_header.php'; ?>
@@ -270,9 +378,9 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
         
         <div class="admin-content">
             <div class="page-header">
-                <h1>塔罗师管理</h1>
+                <h1>占卜师管理</h1>
                 <div class="page-actions">
-                    <a href="reader_add.php" class="btn btn-primary">添加塔罗师</a>
+                    <a href="reader_add.php" class="btn btn-primary">添加占卜师</a>
                 </div>
             </div>
             
@@ -327,19 +435,33 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                     <h3>批量操作</h3>
                 </div>
                 <div class="card-body">
+                    <!-- 数据库更新提示 -->
+                    <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                        <h4 style="color: #856404; margin: 0 0 10px 0;">📋 数据库更新提示</h4>
+                        <p style="color: #856404; margin: 0 0 10px 0;">
+                            如果一键注册功能出现错误，可能是数据库表缺少新字段。请先运行数据库更新脚本：
+                        </p>
+                        <a href="../database_update_readers.php" target="_blank" class="btn btn-warning" style="font-size: 0.9rem;">
+                            🔧 运行数据库更新
+                        </a>
+                    </div>
+
                     <div style="display: flex; gap: 20px; align-items: end;">
                         <!-- 一键注册 -->
                         <form method="POST" style="display: inline-block;">
                             <input type="hidden" name="action" value="auto_register">
                             <div class="form-group" style="margin-bottom: 10px;">
-                                <label for="register_count">创建测试塔罗师数量：</label>
+                                <label for="register_count">创建测试占卜师数量：</label>
                                 <input type="number" id="register_count" name="register_count"
                                        value="5" min="1" max="50" style="width: 80px;">
                             </div>
                             <button type="submit" class="btn btn-primary"
-                                    onclick="return confirm('确定要创建测试塔罗师吗？')">
-                                一键注册塔罗师
+                                    onclick="return confirm('确定要创建测试占卜师吗？这将自动填写所有必要信息包括国籍、占卜类型、联系方式等。')">
+                                🎯 一键注册占卜师
                             </button>
+                            <small style="display: block; color: #666; margin-top: 5px;">
+                                自动填写：基本信息、国籍、占卜类型、专长、联系方式等所有字段
+                            </small>
                         </form>
 
                         <!-- 批量删除 -->
@@ -347,7 +469,7 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                             <input type="hidden" name="action" value="batch_delete">
                             <button type="submit" class="btn btn-danger"
                                     onclick="return confirmBatchDelete()">
-                                批量删除选中塔罗师
+                                批量删除选中占卜师
                             </button>
                         </form>
 
@@ -359,14 +481,14 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                 </div>
             </div>
 
-            <!-- 塔罗师列表 -->
+            <!-- 占卜师列表 -->
             <div class="card">
                 <div class="card-header">
-                    <h2>塔罗师列表 (共 <?php echo $total; ?> 位)</h2>
+                    <h2>占卜师列表 (共 <?php echo $total; ?> 位)</h2>
                 </div>
                 <div class="card-body">
                     <?php if (empty($readers)): ?>
-                        <p class="no-data">没有找到塔罗师</p>
+                        <p class="no-data">没有找到占卜师</p>
                     <?php else: ?>
                         <div class="table-responsive">
                             <table class="table">
@@ -376,6 +498,7 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                         <th>姓名</th>
                                         <th>性别</th>
                                         <th>邮箱</th>
+                                        <th>身份标签</th>
                                         <th>从业年数</th>
                                         <th>查看次数</th>
                                         <th>状态</th>
@@ -407,6 +530,13 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                                 <?php endif; ?>
                                             </td>
                                             <td><?php echo h($reader['email']); ?></td>
+                                            <td class="admin-table">
+                                                <?php if (DivinationTagHelper::hasValidTags($reader)): ?>
+                                                    <?php echo DivinationTagHelper::generateAdminTags($reader); ?>
+                                                <?php else: ?>
+                                                    <span style="color: #999; font-style: italic;">未设置</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo h($reader['experience_years']); ?>年</td>
                                             <td><?php echo h($reader['view_count']); ?></td>
                                             <td>
@@ -444,7 +574,7 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
                                                         </button>
                                                     </form>
 
-                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('确定要删除这位塔罗师吗？此操作不可恢复！');">
+                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('确定要删除这位占卜师吗？此操作不可恢复！');">
                                                         <input type="hidden" name="action" value="delete_reader">
                                                         <input type="hidden" name="reader_id" value="<?php echo $reader['id']; ?>">
                                                         <button type="submit" class="btn btn-sm btn-danger">删除</button>
@@ -529,11 +659,11 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
             const checkedBoxes = document.querySelectorAll('.reader-checkbox:checked');
 
             if (checkedBoxes.length === 0) {
-                alert('请选择要删除的塔罗师');
+                alert('请选择要删除的占卜师');
                 return false;
             }
 
-            return confirm(`确定要删除选中的 ${checkedBoxes.length} 个塔罗师吗？此操作不可恢复！`);
+            return confirm(`确定要删除选中的 ${checkedBoxes.length} 个占卜师吗？此操作不可恢复！`);
         }
 
         // 将选中的复选框添加到批量删除表单中
@@ -544,7 +674,7 @@ $totalPages = ceil($total / ADMIN_ITEMS_PER_PAGE);
             const existingInputs = this.querySelectorAll('input[name="reader_ids[]"]');
             existingInputs.forEach(input => input.remove());
 
-            // 添加选中的塔罗师ID
+            // 添加选中的占卜师ID
             checkedBoxes.forEach(checkbox => {
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';

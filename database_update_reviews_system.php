@@ -110,10 +110,10 @@ try {
         echo "<p style='color: blue;'>ℹ️ 评价系统设置已存在</p>";
     }
     
-    // 7. 初始化现有塔罗师的评分统计（不使用触发器）
+    // 7. 初始化现有占卜师的评分统计（不使用触发器）
     echo "<p style='color: blue;'>ℹ️ 跳过触发器创建（需要SUPER权限），将使用程序化更新评分统计</p>";
 
-    // 初始化所有塔罗师的评分统计
+    // 初始化所有占卜师的评分统计
     $readers = $db->fetchAll("SELECT id FROM readers");
     foreach ($readers as $reader) {
         $stats = $db->fetchOne("
@@ -133,7 +133,7 @@ try {
             WHERE id = ?
         ", [$avgRating, $totalReviews, $reader['id']]);
     }
-    echo "<p style='color: green;'>✅ 初始化塔罗师评分统计数据</p>";
+    echo "<p style='color: green;'>✅ 初始化占卜师评分统计数据</p>";
     
     echo "<h3>数据库表结构：</h3>";
     

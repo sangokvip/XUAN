@@ -31,9 +31,9 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 // 内容安全策略
 $csp = "default-src 'self'; " .
        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-       "style-src 'self' 'unsafe-inline'; " .
+       "style-src 'self' 'unsafe-inline' fonts.googleapis.com; " .
        "img-src 'self' data: blob:; " .
-       "font-src 'self' data: *.alicdn.com chrome-extension:; " .
+       "font-src 'self' data: *.alicdn.com fonts.gstatic.com chrome-extension:; " .
        "connect-src 'self'; " .
        "frame-ancestors 'none';";
 header("Content-Security-Policy: $csp");

@@ -144,9 +144,10 @@ class TataCoinManager {
      * 查看塔罗师联系方式（付费功能）
      * @param int $userId 用户ID
      * @param int $readerId 塔罗师ID
+     * @param string $userType 用户类型 ('user' 或 'reader')
      * @return array 包含是否成功和塔罗师信息
      */
-    public function viewReaderContact($userId, $readerId) {
+    public function viewReaderContact($userId, $readerId, $userType = 'user') {
         // 获取塔罗师信息
         $reader = $this->db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
         if (!$reader) {
@@ -155,8 +156,8 @@ class TataCoinManager {
         
         // 检查是否已经付费查看过
         $existingRecord = $this->db->fetchOne(
-            "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid'",
-            [$userId, $readerId]
+            "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid' AND user_type = ?",
+            [$userId, $readerId, $userType]
         );
         
         if ($existingRecord) {
@@ -174,7 +175,7 @@ class TataCoinManager {
         $cost = $this->calculateDiscountedPrice($userId, $originalCost);
         
         // 检查用户余额
-        $userBalance = $this->getBalance($userId, 'user');
+        $userBalance = $this->getBalance($userId, $userType);
         if ($userBalance < $cost) {
             throw new Exception("Tata Coin余额不足，需要 {$cost} 个Tata Coin");
         }
@@ -187,7 +188,7 @@ class TataCoinManager {
             $readerEarning = intval($cost * $commissionRate / 100);
 
             // 获取当前余额
-            $userCurrentBalance = $this->getBalance($userId, 'user');
+            $userCurrentBalance = $this->getBalance($userId, $userType);
             $readerCurrentBalance = $this->getBalance($readerId, 'reader');
 
             // 计算新余额
@@ -195,7 +196,11 @@ class TataCoinManager {
             $readerNewBalance = $readerCurrentBalance + $readerEarning;
 
             // 更新用户余额
-            $this->db->query("UPDATE users SET tata_coin = ? WHERE id = ?", [$userNewBalance, $userId]);
+            if ($userType === 'user') {
+                $this->db->query("UPDATE users SET tata_coin = ? WHERE id = ?", [$userNewBalance, $userId]);
+            } else {
+                $this->db->query("UPDATE readers SET tata_coin = ? WHERE id = ?", [$userNewBalance, $userId]);
+            }
 
             // 更新塔罗师余额
             if ($readerEarning > 0) {
@@ -203,11 +208,11 @@ class TataCoinManager {
             }
 
             // 记录用户交易
-            $this->recordTransaction($userId, 'user', 'spend', -$cost, $userNewBalance, "查看塔罗师 {$reader['full_name']} 的联系方式", $readerId, 'reader');
+            $this->recordTransaction($userId, $userType, 'spend', -$cost, $userNewBalance, "查看塔罗师 {$reader['full_name']} 的联系方式", $readerId, 'reader');
 
             // 记录塔罗师收益
             if ($readerEarning > 0) {
-                $this->recordTransaction($readerId, 'reader', 'earn', $readerEarning, $readerNewBalance, "用户查看联系方式分成", $userId, 'user');
+                $this->recordTransaction($readerId, 'reader', 'earn', $readerEarning, $readerNewBalance, ($userType === 'user' ? "用户" : "占卜师") . "查看联系方式分成", $userId, $userType);
 
                 // 处理塔罗师收益的邀请返点
                 try {
@@ -224,8 +229,8 @@ class TataCoinManager {
 
             // 记录浏览历史
             $this->db->query(
-                "INSERT INTO user_browse_history (user_id, reader_id, browse_type, cost) VALUES (?, ?, 'paid', ?)",
-                [$userId, $readerId, $cost]
+                "INSERT INTO user_browse_history (user_id, reader_id, browse_type, cost, user_type) VALUES (?, ?, 'paid', ?, ?)",
+                [$userId, $readerId, $cost, $userType]
             );
 
             $this->db->commit();

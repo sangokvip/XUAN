@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/config.php';
+require_once 'includes/DivinationTagHelper.php';
 
 // 检查是否已登录
 $user = null;
@@ -44,7 +45,7 @@ if (!empty($specialty)) {
     $params[] = $specialtyTerm;
 }
 
-// 获取塔罗师数据
+// 获取占卜师数据
 $db = Database::getInstance();
 $offset = ($page - 1) * READERS_PER_PAGE;
 
@@ -74,8 +75,30 @@ $totalPages = ceil($total / READERS_PER_PAGE);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>塔罗师列表 - <?php echo getSiteName(); ?></title>
+    <title>占卜师列表 - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/divination-tags.css">
+
+    <!-- 强制移除标签下划线的内联样式 -->
+    <style>
+        a.divination-tag,
+        a.divination-tag:link,
+        a.divination-tag:visited,
+        a.divination-tag:hover,
+        a.divination-tag:active,
+        a.divination-tag:focus {
+            text-decoration: none !important;
+            border-bottom: none !important;
+            text-underline-offset: unset !important;
+            text-decoration-line: none !important;
+            text-decoration-style: none !important;
+            text-decoration-color: transparent !important;
+            text-decoration-thickness: 0 !important;
+            border-bottom-width: 0 !important;
+            border-bottom-style: none !important;
+            border-bottom-color: transparent !important;
+        }
+    </style>
 
     <?php
     // 输出等级标签CSS
@@ -499,15 +522,15 @@ $totalPages = ceil($total / READERS_PER_PAGE);
     <main>
         <div class="container">
             <div class="page-header">
-                <h1>塔罗师列表</h1>
-                <p>寻找适合您的专业塔罗师</p>
+                <h1>占卜师列表</h1>
+                <p>寻找适合您的专业占卜师</p>
             </div>
             
             <!-- 搜索栏 -->
             <div class="search-section">
                 <form method="GET" class="search-form">
                     <div class="search-input-group">
-                        <input type="text" name="search" placeholder="搜索塔罗师姓名、擅长方向..." 
+                        <input type="text" name="search" placeholder="搜索占卜师姓名、擅长方向..."
                                value="<?php echo h($search); ?>">
                         <button type="submit" class="btn btn-primary">搜索</button>
                     </div>
@@ -516,22 +539,22 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                 <?php if (!empty($search) || !empty($specialty)): ?>
                     <div class="search-results-info">
                         <?php if (!empty($search) && !empty($specialty)): ?>
-                            <p>搜索 "<?php echo h($search); ?>" 并筛选 "<?php echo h($specialty); ?>" 找到 <?php echo $total; ?> 位塔罗师</p>
+                            <p>搜索 "<?php echo h($search); ?>" 并筛选 "<?php echo h($specialty); ?>" 找到 <?php echo $total; ?> 位占卜师</p>
                         <?php elseif (!empty($search)): ?>
-                            <p>搜索 "<?php echo h($search); ?>" 找到 <?php echo $total; ?> 位塔罗师</p>
+                            <p>搜索 "<?php echo h($search); ?>" 找到 <?php echo $total; ?> 位占卜师</p>
                         <?php elseif (!empty($specialty)): ?>
-                            <p>筛选 "<?php echo h($specialty); ?>" 方向找到 <?php echo $total; ?> 位塔罗师</p>
+                            <p>筛选 "<?php echo h($specialty); ?>" 方向找到 <?php echo $total; ?> 位占卜师</p>
                         <?php endif; ?>
                         <a href="readers.php" class="clear-search">清除筛选</a>
                     </div>
                 <?php endif; ?>
             </div>
             
-            <!-- 塔罗师列表 -->
+            <!-- 占卜师列表 -->
             <?php if (empty($readers)): ?>
                 <div class="no-results">
-                    <h2>暂无塔罗师</h2>
-                    <p><?php echo !empty($search) ? '没有找到匹配的塔罗师，请尝试其他关键词。' : '目前还没有塔罗师注册。'; ?></p>
+                    <h2>暂无占卜师</h2>
+                    <p><?php echo !empty($search) ? '没有找到匹配的占卜师，请尝试其他关键词。' : '目前还没有占卜师注册。'; ?></p>
                 </div>
             <?php else: ?>
                 <div class="readers-grid">
@@ -543,13 +566,10 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                             
                             <div class="reader-photo">
                                 <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-photo-link">
-                                    <?php if (!empty($reader['photo'])): ?>
-                                        <img src="<?php echo h($reader['photo']); ?>" alt="<?php echo h($reader['full_name']); ?>">
-                                    <?php else: ?>
-                                        <div class="default-photo">
-                                            <i class="icon-user"></i>
-                                        </div>
-                                    <?php endif; ?>
+                                    <?php
+                                    $photoSrc = getReaderPhotoUrl($reader);
+                                    ?>
+                                    <img src="<?php echo h($photoSrc); ?>" alt="<?php echo h($reader['full_name']); ?>">
                                 </a>
                                 <!-- 查看次数徽章 -->
                                 <div class="view-count-badge">
@@ -561,18 +581,22 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                             </div>
                             
                             <div class="reader-info">
-                                <!-- 塔罗师名字和从业年数 -->
+                                <!-- 占卜师名字和从业年数 -->
                                 <div class="reader-header">
                                     <h3 class="reader-name">
                                         <?php echo h($reader['full_name']); ?>
                                         <?php
-                                        // 显示塔罗师等级标签
-                                        require_once 'includes/level_badge.php';
-                                        echo getReaderLevelBadgeHTML($reader['is_featured'] ? '推荐塔罗师' : '塔罗师', 'small');
+                                        // 显示主要身份标签（可点击）
+                                        if (DivinationTagHelper::hasValidTags($reader) && !empty($reader['primary_identity'])) {
+                                            echo DivinationTagHelper::generatePrimaryTag($reader, false, true);
+                                        }
+                                        // 移除旧的等级标签显示
                                         ?>
                                     </h3>
                                     <span class="reader-experience">从业 <?php echo h($reader['experience_years']); ?> 年</span>
                                 </div>
+
+
 
                                 <!-- 评分信息 -->
                                 <?php if ($reader['total_reviews'] > 0): ?>

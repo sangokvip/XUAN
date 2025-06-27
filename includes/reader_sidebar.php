@@ -12,10 +12,17 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/reader/profile.php" 
+            <a href="<?php echo SITE_URL; ?>/reader/profile.php"
                class="<?php echo $current_page === 'profile.php' ? 'active' : ''; ?>">
                 <span class="icon">👤</span>
-                个人资料
+                个人资料与设置
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $_SESSION['reader_id']; ?>"
+               target="_blank">
+                <span class="icon">🔍</span>
+                查看我的页面
             </a>
         </li>
         <li>
@@ -59,12 +66,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                 邀请管理
             </a>
         </li>
-        <li>
-            <a href="<?php echo SITE_URL; ?>/reader/settings.php"
-               class="<?php echo $current_page === 'settings.php' ? 'active' : ''; ?>">
-                <span class="icon">⚙️</span>
-                账户设置
-            </a>
-        </li>
+
     </ul>
 </nav>

@@ -23,7 +23,8 @@ class TataCoinSystem {
     onPageLoad() {
         // 如果用户已登录，执行相关功能
         if (this.userId) {
-            this.handlePageBrowseReward();
+            // 暂时禁用浏览奖励功能，避免API错误
+            // this.handlePageBrowseReward();
             this.initCheckInButton();
             this.updateCoinDisplay();
         }
@@ -53,7 +54,7 @@ class TataCoinSystem {
                     this.updateCoinDisplay();
                 }
             } catch (error) {
-                console.log('浏览奖励请求失败:', error);
+                console.log('Browse reward request failed:', error);
             }
         }, 5000); // 5秒后执行
     }

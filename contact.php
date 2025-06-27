@@ -4,6 +4,18 @@ require_once 'config/config.php';
 
 $success = '';
 $errors = [];
+$db = Database::getInstance();
+
+// 获取联系方式设置
+function getContactSetting($key, $default = '') {
+    global $db;
+    try {
+        $setting = $db->fetchOne("SELECT setting_value FROM settings WHERE setting_key = ?", [$key]);
+        return $setting ? $setting['setting_value'] : $default;
+    } catch (Exception $e) {
+        return $default;
+    }
+}
 
 // 处理联系表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -11,30 +23,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
     $message = trim($_POST['message'] ?? '');
-    
+
     // 验证表单
     if (empty($name)) {
         $errors[] = '请输入您的姓名';
     }
-    
+
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = '请输入有效的邮箱地址';
     }
-    
+
     if (empty($subject)) {
         $errors[] = '请输入主题';
     }
-    
+
     if (empty($message)) {
         $errors[] = '请输入留言内容';
     }
-    
+
     if (empty($errors)) {
-        // 这里可以添加发送邮件或保存到数据库的逻辑
-        $success = '感谢您的留言！我们会尽快回复您。';
-        
-        // 清空表单
-        $name = $email = $subject = $message = '';
+        try {
+            // 保存留言到数据库
+            $db->query(
+                "INSERT INTO contact_messages (name, email, subject, message, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+                [
+                    $name,
+                    $email,
+                    $subject,
+                    $message,
+                    $_SERVER['REMOTE_ADDR'] ?? '',
+                    $_SERVER['HTTP_USER_AGENT'] ?? ''
+                ]
+            );
+
+            $success = '感谢您的留言！我们会尽快回复您。';
+
+            // 清空表单
+            $name = $email = $subject = $message = '';
+
+        } catch (Exception $e) {
+            $errors[] = '提交失败，请稍后重试。';
+            error_log("Contact form submission error: " . $e->getMessage());
+        }
     }
 }
 ?>
@@ -65,29 +95,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="contact-card">
                             <div class="contact-icon">📧</div>
                             <h3>邮箱联系</h3>
-                            <p>info@example.com</p>
-                            <p>support@example.com</p>
+                            <p><?php echo h(getContactSetting('contact_email_primary', 'info@example.com')); ?></p>
+                            <p><?php echo h(getContactSetting('contact_email_support', 'support@example.com')); ?></p>
                         </div>
-                        
+
                         <div class="contact-card">
                             <div class="contact-icon">💬</div>
                             <h3>微信客服</h3>
-                            <p>微信号：mystical_service</p>
-                            <p>工作时间：9:00-21:00</p>
+                            <p>微信号：<?php echo h(getContactSetting('contact_wechat_id', 'mystical_service')); ?></p>
+                            <p>工作时间：<?php echo h(getContactSetting('contact_wechat_hours', '9:00-21:00')); ?></p>
                         </div>
-                        
+
                         <div class="contact-card">
                             <div class="contact-icon">📱</div>
                             <h3>QQ群</h3>
-                            <p>官方交流群：123456789</p>
-                            <p>新手学习群：987654321</p>
+                            <p>官方交流群：<?php echo h(getContactSetting('contact_qq_main', '123456789')); ?></p>
+                            <p>新手学习群：<?php echo h(getContactSetting('contact_qq_newbie', '987654321')); ?></p>
                         </div>
-                        
+
                         <div class="contact-card">
                             <div class="contact-icon">📍</div>
                             <h3>小红书</h3>
-                            <p>@神秘学园</p>
-                            <p>每日分享占卜知识</p>
+                            <p><?php echo h(getContactSetting('contact_xiaohongshu', '@神秘学园')); ?></p>
+                            <p><?php echo h(getContactSetting('contact_xiaohongshu_desc', '每日分享占卜知识')); ?></p>
                         </div>
                     </div>
                 </div>

@@ -243,7 +243,7 @@ elseif ($step === 4) {
 
                 // 更新网站设置
                 $stmt = $pdo->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'site_name'");
-                $stmt->execute(['塔罗师展示平台']);
+                $stmt->execute(['占卜师展示平台']);
 
                 // 创建最终配置文件
                 $finalConfig = "<?php\n";
@@ -328,7 +328,7 @@ function getCompleteDbStructure() {
             FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
 
-        // 塔罗师表
+        // 占卜师表
         "CREATE TABLE IF NOT EXISTS readers (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(50) UNIQUE NOT NULL,
@@ -337,6 +337,7 @@ function getCompleteDbStructure() {
             full_name VARCHAR(100) NOT NULL,
             phone VARCHAR(20) COMMENT '电话号码',
             gender ENUM('male', 'female') DEFAULT NULL COMMENT '性别：male-男，female-女',
+            nationality VARCHAR(10) DEFAULT 'CN' COMMENT '国籍代码',
             photo VARCHAR(255),
             photo_circle VARCHAR(255) DEFAULT NULL COMMENT '圆形头像（用于首页展示）',
             certificates TEXT DEFAULT NULL COMMENT '证书图片路径（JSON格式）',
@@ -344,6 +345,9 @@ function getCompleteDbStructure() {
             experience_years INT NOT NULL DEFAULT 0,
             specialties TEXT,
             custom_specialties VARCHAR(500) DEFAULT NULL COMMENT '自定义专长标签（最多3个，每个最多4字符）',
+            divination_types TEXT DEFAULT NULL COMMENT '占卜类型（JSON格式）',
+            primary_identity VARCHAR(50) DEFAULT NULL COMMENT '主要身份标签',
+            identity_category ENUM('western', 'eastern') DEFAULT NULL COMMENT '身份类别：western-西玄，eastern-东玄',
             description TEXT,
             contact_info TEXT COMMENT '联系信息描述',
             wechat VARCHAR(100) DEFAULT NULL COMMENT '微信号',
@@ -354,7 +358,7 @@ function getCompleteDbStructure() {
             view_count INT DEFAULT 0 COMMENT '查看次数',
             average_rating DECIMAL(3,2) DEFAULT 0.00 COMMENT '平均评分',
             total_reviews INT DEFAULT 0 COMMENT '总评价数',
-            tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，塔罗师默认0',
+            tata_coin INT DEFAULT 0 COMMENT 'Tata Coin余额，占卜师默认0',
             is_featured BOOLEAN DEFAULT FALSE,
             is_active BOOLEAN DEFAULT TRUE,
             registration_token VARCHAR(255),
@@ -539,7 +543,7 @@ function getCompleteDbStructure() {
             id INT AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL COMMENT '消息标题',
             content TEXT NOT NULL COMMENT '消息内容',
-            target_type ENUM('user', 'reader', 'all') NOT NULL COMMENT '目标类型：user-普通用户，reader-塔罗师，all-所有人',
+            target_type ENUM('user', 'reader', 'all') NOT NULL COMMENT '目标类型：user-普通用户，reader-占卜师，all-所有人',
             created_by INT NOT NULL COMMENT '创建者ID（管理员）',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -562,9 +566,9 @@ function getCompleteDbStructure() {
 
         // 插入默认设置
         "INSERT INTO settings (setting_key, setting_value, description) VALUES
-        ('site_name', '塔罗师展示平台', '网站名称'),
-        ('site_description', '专业塔罗师展示平台', '网站描述'),
-        ('max_featured_readers', '6', '首页最大推荐塔罗师数量'),
+        ('site_name', '占卜师展示平台', '网站名称'),
+        ('site_description', '专业占卜师展示平台', '网站描述'),
+        ('max_featured_readers', '6', '首页最大推荐占卜师数量'),
         ('registration_link_hours', '24', '注册链接有效期（小时）')
         ON DUPLICATE KEY UPDATE setting_key = setting_key"
     ];

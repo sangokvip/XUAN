@@ -23,46 +23,108 @@ $tataCoinManager = new TataCoinManager();
 try {
     switch ($action) {
         case 'daily_checkin':
-            // 每日签到
-            $result = $tataCoinManager->dailyCheckIn($userId);
-            echo json_encode($result);
+            // 每日签到 - 简化版本
+            try {
+                $db = Database::getInstance();
+                $today = date('Y-m-d');
+                $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+
+                // 检查今天是否已签到
+                if ($userType === 'user') {
+                    $existingCheckin = $db->fetchOne(
+                        "SELECT id FROM daily_checkins WHERE user_id = ? AND user_type = ? AND checkin_date = ?",
+                        [$userId, $userType, $today]
+                    );
+                } else {
+                    $existingCheckin = $db->fetchOne(
+                        "SELECT id FROM daily_checkins WHERE reader_id = ? AND user_type = ? AND checkin_date = ?",
+                        [$userId, $userType, $today]
+                    );
+                }
+
+                if ($existingCheckin) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => '今日已签到',
+                        'reward' => 0,
+                        'consecutive_days' => 1
+                    ]);
+                    break;
+                }
+
+                // 插入签到记录
+                if ($userType === 'user') {
+                    $insertData = [
+                        'user_id' => $userId,
+                        'reader_id' => null,
+                        'user_type' => $userType,
+                        'checkin_date' => $today,
+                        'consecutive_days' => 1,
+                        'reward_amount' => 5,
+                        'ip_address' => $ipAddress
+                    ];
+                } else {
+                    $insertData = [
+                        'user_id' => null,
+                        'reader_id' => $userId,
+                        'user_type' => $userType,
+                        'checkin_date' => $today,
+                        'consecutive_days' => 1,
+                        'reward_amount' => 5,
+                        'ip_address' => $ipAddress
+                    ];
+                }
+
+                $db->insert('daily_checkins', $insertData);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => '签到成功！获得5个Tata币',
+                    'reward' => 5,
+                    'consecutive_days' => 1
+                ]);
+
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => '签到失败：' . $e->getMessage(),
+                    'reward' => 0,
+                    'consecutive_days' => 0
+                ]);
+            }
             break;
             
         case 'check_checkin_status':
-            // 检查签到状态
-            $today = date('Y-m-d');
-            $db = Database::getInstance();
-            
-            $todayCheckIn = $db->fetchOne(
-                "SELECT * FROM daily_check_ins WHERE user_id = ? AND check_in_date = ?",
-                [$userId, $today]
-            );
-            
-            $lastCheckIn = $db->fetchOne(
-                "SELECT * FROM daily_check_ins WHERE user_id = ? ORDER BY check_in_date DESC LIMIT 1",
-                [$userId]
-            );
-            
-            $consecutiveDays = 0;
-            if ($lastCheckIn) {
-                if ($todayCheckIn) {
-                    $consecutiveDays = $todayCheckIn['consecutive_days'];
+            // 检查签到状态 - 简化版本
+            try {
+                $db = Database::getInstance();
+                $today = date('Y-m-d');
+
+                if ($userType === 'user') {
+                    $todayCheckin = $db->fetchOne(
+                        "SELECT consecutive_days FROM daily_checkins WHERE user_id = ? AND user_type = ? AND checkin_date = ?",
+                        [$userId, $userType, $today]
+                    );
                 } else {
-                    $lastDate = new DateTime($lastCheckIn['check_in_date']);
-                    $todayDate = new DateTime($today);
-                    $daysDiff = $todayDate->diff($lastDate)->days;
-                    
-                    if ($daysDiff == 1) {
-                        $consecutiveDays = $lastCheckIn['consecutive_days'];
-                    }
+                    $todayCheckin = $db->fetchOne(
+                        "SELECT consecutive_days FROM daily_checkins WHERE reader_id = ? AND user_type = ? AND checkin_date = ?",
+                        [$userId, $userType, $today]
+                    );
                 }
+
+                echo json_encode([
+                    'success' => true,
+                    'checked_in_today' => !empty($todayCheckin),
+                    'consecutive_days' => $todayCheckin['consecutive_days'] ?? 0
+                ]);
+
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'checked_in_today' => false,
+                    'consecutive_days' => 0
+                ]);
             }
-            
-            echo json_encode([
-                'success' => true,
-                'checked_in_today' => !empty($todayCheckIn),
-                'consecutive_days' => $consecutiveDays
-            ]);
             break;
             
         case 'browse_reward':

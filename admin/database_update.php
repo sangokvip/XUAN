@@ -45,7 +45,7 @@ $availableUpdates = [
             "UPDATE users SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
             "UPDATE readers SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
             "UPDATE users SET avatar = CASE WHEN gender = 'male' THEN 'img/nm.jpg' WHEN gender = 'female' THEN 'img/nf.jpg' ELSE 'img/nm.jpg' END WHERE avatar IS NULL",
-            "UPDATE readers SET photo = CASE WHEN gender = 'male' THEN 'img/tm.jpg' WHEN gender = 'female' THEN 'img/tf.jpg' ELSE 'img/tm.jpg' END WHERE photo IS NULL OR photo = ''"
+            "UPDATE readers SET photo = CASE WHEN gender = 'male' THEN CONCAT('img/m', (id % 4) + 1, '.jpg') WHEN gender = 'female' THEN CONCAT('img/f', (id % 4) + 1, '.jpg') ELSE 'img/m1.jpg' END WHERE photo IS NULL OR photo = ''"
         ],
         'check_sql' => "SHOW COLUMNS FROM users LIKE 'gender'"
     ],
@@ -189,6 +189,16 @@ $availableUpdates = [
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息阅读记录表'"
         ],
         'check_sql' => "SHOW TABLES LIKE 'admin_messages'"
+    ],
+    'add_divination_types' => [
+        'name' => '添加占卜类型字段',
+        'description' => '为塔罗师表添加占卜类型相关字段，用于存储西玄/东玄分类和主要身份标签',
+        'sql' => [
+            "ALTER TABLE readers ADD COLUMN divination_types TEXT DEFAULT NULL COMMENT '占卜类型（JSON格式）' AFTER specialties",
+            "ALTER TABLE readers ADD COLUMN primary_identity VARCHAR(50) DEFAULT NULL COMMENT '主要身份标签' AFTER divination_types",
+            "ALTER TABLE readers ADD COLUMN identity_category ENUM('western', 'eastern') DEFAULT NULL COMMENT '身份类别：western-西玄，eastern-东玄' AFTER primary_identity"
+        ],
+        'check_sql' => "SHOW COLUMNS FROM readers LIKE 'divination_types'"
     ]
 ];
 
