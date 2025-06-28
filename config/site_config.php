@@ -1,6 +1,6 @@
 <?php
 // 网站配置
-define('SITE_URL', 'https://diviners.pro');
+define('SITE_URL', 'https://diviners.net');
 define('INSTALLED', true);
 
 // 包含数据库配置

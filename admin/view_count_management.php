@@ -48,13 +48,10 @@ $allReaders = $db->fetchAll("SELECT id, full_name, view_count FROM readers WHERE
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>查看次数管理 - 管理后台</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
-        .management-container {
-            max-width: 100%;
-            margin: 0;
-            padding: 0;
-        }
+        /* 查看次数管理页面特定样式 */
         
         .section {
             background: white;
@@ -194,8 +191,7 @@ $allReaders = $db->fetchAll("SELECT id, full_name, view_count FROM readers WHERE
         </div>
 
         <div class="admin-content">
-            <div class="management-container">
-        <h1>📊 查看次数管理</h1>
+            <h1>📊 查看次数管理</h1>
         
         <?php if ($success): ?>
             <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
@@ -377,8 +373,6 @@ $allReaders = $db->fetchAll("SELECT id, full_name, view_count FROM readers WHERE
                     <li>✅ 完整的访问日志记录</li>
                     <li>✅ 自动清理过期记录</li>
                 </ul>
-            </div>
-        </div>
             </div>
         </div>
     </div>

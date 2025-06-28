@@ -167,30 +167,10 @@ $pageTitle = 'Tata Coin管理';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - 管理后台</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .tata-coin-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .page-header {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-        
-        .page-header h1 {
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 700;
-        }
+        /* Tata Coin 管理页面特定样式 */
         
         .stats-grid {
             display: grid;
@@ -356,12 +336,17 @@ $pageTitle = 'Tata Coin管理';
 </head>
 <body>
     <?php include '../includes/admin_header.php'; ?>
-    
-    <div class="tata-coin-container">
-        <div class="page-header">
-            <h1>💰 Tata Coin管理</h1>
-            <p>管理网站的虚拟货币系统</p>
+
+    <div class="admin-container">
+        <div class="admin-sidebar">
+            <?php include '../includes/admin_sidebar.php'; ?>
         </div>
+
+        <div class="admin-content">
+            <div class="page-header">
+                <h1>💰 Tata Coin管理</h1>
+                <p>管理网站的虚拟货币系统</p>
+            </div>
         
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
@@ -665,7 +650,9 @@ $pageTitle = 'Tata Coin管理';
             updateUserList();
         });
     </script>
-    
+        </div>
+    </div>
+
     <?php include '../includes/admin_footer.php'; ?>
 </body>
 </html>

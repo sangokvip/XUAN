@@ -162,22 +162,10 @@ $pageTitle = '消息管理';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - 管理后台</title>
+    <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
-        .messages-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .page-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
+        /* 消息管理页面特定样式 */
         
         .content-grid {
             display: grid;
@@ -569,12 +557,17 @@ $pageTitle = '消息管理';
 </head>
 <body>
     <?php include '../includes/admin_header.php'; ?>
-    
-    <div class="messages-container">
-        <div class="page-header">
-            <h1>📢 消息管理</h1>
-            <p>向用户和塔罗师发送通知消息，查看在线留言</p>
+
+    <div class="admin-container">
+        <div class="admin-sidebar">
+            <?php include '../includes/admin_sidebar.php'; ?>
         </div>
+
+        <div class="admin-content">
+            <div class="page-header">
+                <h1>📢 消息管理</h1>
+                <p>向用户和塔罗师发送通知消息，查看在线留言</p>
+            </div>
 
         <!-- 标签页导航 -->
         <div class="tab-navigation">
@@ -818,6 +811,8 @@ $pageTitle = '消息管理';
             form.classList.toggle('active');
         }
     </script>
+        </div>
+    </div>
 
     <?php include '../includes/admin_footer.php'; ?>
 </body>

@@ -22,12 +22,12 @@ $whereClause = "WHERE 1=1";
 $params = [];
 
 if (!empty($dateFrom)) {
-    $whereClause .= " AND DATE(br.browse_date) >= ?";
+    $whereClause .= " AND DATE(br.created_at) >= ?";
     $params[] = $dateFrom;
 }
 
 if (!empty($dateTo)) {
-    $whereClause .= " AND DATE(br.browse_date) <= ?";
+    $whereClause .= " AND DATE(br.created_at) <= ?";
     $params[] = $dateTo;
 }
 
@@ -37,10 +37,10 @@ if (!empty($userId)) {
 }
 
 // 获取浏览记录
-$sql = "SELECT br.*, u.username, 
-        CASE 
-            WHEN br.browse_type = 'page' THEN CONCAT('页面浏览: ', br.page_url)
+$sql = "SELECT br.*, u.username,
+        CASE
             WHEN br.browse_type = 'paid' THEN CONCAT('付费查看占卜师: ', r.full_name)
+            WHEN br.browse_type = 'free' THEN CONCAT('免费浏览占卜师: ', r.full_name)
             ELSE br.browse_type
         END as browse_description,
         r.full_name as reader_name
@@ -48,7 +48,7 @@ $sql = "SELECT br.*, u.username,
         LEFT JOIN users u ON br.user_id = u.id
         LEFT JOIN readers r ON br.reader_id = r.id
         {$whereClause}
-        ORDER BY br.browse_date DESC
+        ORDER BY br.created_at DESC
         LIMIT {$limit} OFFSET {$offset}";
 
 $records = $db->fetchAll($sql, $params);
@@ -64,33 +64,34 @@ $today = date('Y-m-d');
 
 // 今日统计
 $todayStats = $db->fetchOne("
-    SELECT 
+    SELECT
         COUNT(*) as total_browses,
         COUNT(DISTINCT user_id) as unique_users,
-        SUM(CASE WHEN browse_type = 'page' THEN 1 ELSE 0 END) as page_browses,
+        SUM(CASE WHEN browse_type = 'free' THEN 1 ELSE 0 END) as free_browses,
         SUM(CASE WHEN browse_type = 'paid' THEN 1 ELSE 0 END) as paid_views,
-        SUM(coins_earned) as total_coins_earned
-    FROM user_browse_history 
-    WHERE DATE(browse_date) = ?
+        SUM(CASE WHEN browse_type = 'paid' THEN cost ELSE 0 END) as total_coins_spent
+    FROM user_browse_history
+    WHERE DATE(created_at) = ?
 ", [$today]);
 
-// 热门页面统计
-$popularPages = $db->fetchAll("
-    SELECT page_url, COUNT(*) as view_count
-    FROM user_browse_history 
-    WHERE browse_type = 'page' AND DATE(browse_date) = ?
-    GROUP BY page_url
+// 热门占卜师统计
+$popularReaders = $db->fetchAll("
+    SELECT r.full_name, r.id, COUNT(*) as view_count
+    FROM user_browse_history ubh
+    JOIN readers r ON ubh.reader_id = r.id
+    WHERE DATE(ubh.created_at) = ?
+    GROUP BY r.id, r.full_name
     ORDER BY view_count DESC
     LIMIT 10
 ", [$today]);
 
 // 活跃用户统计
 $activeUsers = $db->fetchAll("
-    SELECT u.username, COUNT(*) as browse_count, SUM(br.coins_earned) as coins_earned
+    SELECT u.username, COUNT(*) as browse_count, SUM(CASE WHEN br.browse_type = 'paid' THEN br.cost ELSE 0 END) as coins_spent
     FROM user_browse_history br
     LEFT JOIN users u ON br.user_id = u.id
-    WHERE DATE(br.browse_date) = ?
-    GROUP BY br.user_id
+    WHERE DATE(br.created_at) = ?
+    GROUP BY br.user_id, u.username
     ORDER BY browse_count DESC
     LIMIT 10
 ", [$today]);
@@ -135,37 +136,37 @@ $activeUsers = $db->fetchAll("
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">📄</div>
+                    <div class="stat-icon">👁️</div>
                     <div class="stat-content">
-                        <div class="stat-number"><?php echo $todayStats['page_browses'] ?? 0; ?></div>
-                        <div class="stat-label">页面浏览次数</div>
+                        <div class="stat-number"><?php echo $todayStats['free_browses'] ?? 0; ?></div>
+                        <div class="stat-label">免费浏览次数</div>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">🪙</div>
                     <div class="stat-content">
-                        <div class="stat-number"><?php echo $todayStats['total_coins_earned'] ?? 0; ?></div>
-                        <div class="stat-label">今日奖励金币</div>
+                        <div class="stat-number"><?php echo $todayStats['total_coins_spent'] ?? 0; ?></div>
+                        <div class="stat-label">今日消费金币</div>
                     </div>
                 </div>
             </div>
 
             <!-- 统计图表区域 -->
             <div class="stats-row">
-                <!-- 热门页面 -->
+                <!-- 热门占卜师 -->
                 <div class="card half-width">
                     <div class="card-header">
-                        <h3>今日热门页面</h3>
+                        <h3>今日热门占卜师</h3>
                     </div>
                     <div class="card-body">
-                        <?php if (empty($popularPages)): ?>
+                        <?php if (empty($popularReaders)): ?>
                             <p class="no-data">暂无数据</p>
                         <?php else: ?>
-                            <div class="popular-pages">
-                                <?php foreach ($popularPages as $page): ?>
-                                    <div class="page-item">
-                                        <div class="page-url"><?php echo h($page['page_url']); ?></div>
-                                        <div class="page-count"><?php echo $page['view_count']; ?>次</div>
+                            <div class="popular-readers">
+                                <?php foreach ($popularReaders as $reader): ?>
+                                    <div class="reader-item">
+                                        <div class="reader-name"><?php echo h($reader['full_name']); ?></div>
+                                        <div class="reader-count"><?php echo $reader['view_count']; ?>次浏览</div>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -188,7 +189,7 @@ $activeUsers = $db->fetchAll("
                                         <div class="user-name"><?php echo h($user['username'] ?? '匿名用户'); ?></div>
                                         <div class="user-stats">
                                             <span class="browse-count"><?php echo $user['browse_count']; ?>次浏览</span>
-                                            <span class="coins-earned">+<?php echo $user['coins_earned']; ?>金币</span>
+                                            <span class="coins-spent">-<?php echo $user['coins_spent']; ?>金币</span>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -243,9 +244,9 @@ $activeUsers = $db->fetchAll("
                                         <th>用户</th>
                                         <th>浏览内容</th>
                                         <th>浏览时间</th>
-                                        <th>停留时长</th>
-                                        <th>获得金币</th>
-                                        <th>IP地址</th>
+                                        <th>浏览类型</th>
+                                        <th>消费金币</th>
+                                        <th>用户类型</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -257,22 +258,30 @@ $activeUsers = $db->fetchAll("
                                                     <?php echo h($record['browse_description']); ?>
                                                 </div>
                                             </td>
-                                            <td><?php echo date('Y-m-d H:i:s', strtotime($record['browse_date'])); ?></td>
+                                            <td><?php echo date('Y-m-d H:i:s', strtotime($record['created_at'])); ?></td>
                                             <td>
-                                                <?php if ($record['duration_seconds']): ?>
-                                                    <span class="duration"><?php echo $record['duration_seconds']; ?>秒</span>
+                                                <?php if ($record['browse_type'] === 'paid'): ?>
+                                                    <span class="browse-type paid">付费查看</span>
                                                 <?php else: ?>
-                                                    <span class="no-duration">-</span>
+                                                    <span class="browse-type free">免费浏览</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <?php if ($record['coins_earned'] > 0): ?>
-                                                    <span class="coins-earned">+<?php echo $record['coins_earned']; ?></span>
+                                                <?php if ($record['cost'] > 0): ?>
+                                                    <span class="coins-cost">-<?php echo $record['cost']; ?></span>
                                                 <?php else: ?>
-                                                    <span class="no-coins">0</span>
+                                                    <span class="no-cost">免费</span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo h($record['ip_address']); ?></td>
+                                            <td>
+                                                <?php if (isset($record['user_type'])): ?>
+                                                    <span class="user-type <?php echo $record['user_type']; ?>">
+                                                        <?php echo $record['user_type'] === 'reader' ? '占卜师' : '普通用户'; ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="user-type user">普通用户</span>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -352,12 +361,12 @@ $activeUsers = $db->fetchAll("
             font-size: 0.9rem;
         }
 
-        .popular-pages, .active-users {
+        .popular-readers, .active-users {
             max-height: 300px;
             overflow-y: auto;
         }
 
-        .page-item, .user-item {
+        .reader-item, .user-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -365,11 +374,11 @@ $activeUsers = $db->fetchAll("
             border-bottom: 1px solid #eee;
         }
 
-        .page-item:last-child, .user-item:last-child {
+        .reader-item:last-child, .user-item:last-child {
             border-bottom: none;
         }
 
-        .page-url, .user-name {
+        .reader-name, .user-name {
             font-weight: 500;
             color: #333;
             flex: 1;
@@ -378,7 +387,7 @@ $activeUsers = $db->fetchAll("
             white-space: nowrap;
         }
 
-        .page-count {
+        .reader-count {
             color: #666;
             font-size: 0.9rem;
         }
@@ -422,6 +431,56 @@ $activeUsers = $db->fetchAll("
 
         .filter-form .form-group {
             flex: 1;
+        }
+
+        /* 新增样式 */
+        .coins-cost {
+            color: #dc3545;
+            font-weight: 500;
+        }
+
+        .coins-spent {
+            color: #dc3545;
+            font-weight: 500;
+        }
+
+        .no-cost {
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .browse-type {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .browse-type.paid {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .browse-type.free {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .user-type {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .user-type.reader {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .user-type.user {
+            background: #d4edda;
+            color: #155724;
         }
 
         @media (max-width: 768px) {
