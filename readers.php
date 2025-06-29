@@ -19,15 +19,7 @@ $page = max(1, (int)($_GET['page'] ?? 1));
 $search = trim($_GET['search'] ?? '');
 $specialty = trim($_GET['specialty'] ?? '');
 
-// 调试信息（开发时使用，生产环境请删除）
-if (isset($_GET['debug'])) {
-    echo "<pre>";
-    echo "GET参数: " . print_r($_GET, true);
-    echo "页码: $page\n";
-    echo "搜索: '$search'\n";
-    echo "专长: '$specialty'\n";
-    echo "</pre>";
-}
+
 
 // 构建查询条件
 $whereClause = "WHERE r.is_active = 1";
@@ -77,6 +69,7 @@ $totalPages = ceil($total / READERS_PER_PAGE);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>占卜师列表 - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/image-optimization.css">
     <link rel="stylesheet" href="assets/css/divination-tags.css">
 
     <!-- 强制移除标签下划线的内联样式 -->
@@ -567,9 +560,19 @@ $totalPages = ceil($total / READERS_PER_PAGE);
                             <div class="reader-photo">
                                 <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-photo-link">
                                     <?php
-                                    $photoSrc = getReaderPhotoUrl($reader);
+                                    $photoSrc = '';
+                                    if (!empty($reader['photo'])) {
+                                        $photoSrc = $reader['photo'];
+                                        // 清理路径格式
+                                        $photoSrc = str_replace('../', '', $photoSrc);
+                                        $photoSrc = ltrim($photoSrc, '/');
+                                    } else {
+                                        // 使用新的默认头像系统
+                                        require_once 'includes/AvatarHelper.php';
+                                        $photoSrc = AvatarHelper::getDefaultAvatar($reader['gender'], $reader['id']);
+                                    }
                                     ?>
-                                    <img src="<?php echo h($photoSrc); ?>" alt="<?php echo h($reader['full_name']); ?>">
+                                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="<?php echo h($photoSrc); ?>" class="lazy-image" alt="<?php echo h($reader['full_name']); ?>">
                                 </a>
                                 <!-- 查看次数徽章 -->
                                 <div class="view-count-badge">
@@ -706,5 +709,7 @@ $totalPages = ceil($total / READERS_PER_PAGE);
     </main>
     
     <?php include 'includes/footer.php'; ?>
+    <!-- 图片懒加载 -->
+    <script src="assets/js/lazy-loading.js"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@
         </div>
 
         <div class="footer-bottom">
-            <p>&copy;<?php echo date('Y'); ?> :::玄::: diviners.net All rights reserved.</p>
+            <p>&copy;<?php echo date('Y'); ?> Mystic Readings. All rights reserved.</p>
         </div>
     </div>
 </footer>

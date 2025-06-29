@@ -3,7 +3,7 @@ session_start();
 require_once '../config/config.php';
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
 
 $db = Database::getInstance();
 $success = '';
@@ -23,32 +23,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'readers_per_page' => (int)($_POST['readers_per_page'] ?? 12),
             'admin_items_per_page' => (int)($_POST['admin_items_per_page'] ?? 20)
         ];
-        
+
         $updated = 0;
         foreach ($settings as $key => $value) {
             if (setSetting($key, $value)) {
                 $updated++;
             }
         }
-        
+
         if ($updated > 0) {
             $success = "已更新 {$updated} 项设置";
         } else {
             $error = '设置更新失败';
         }
     }
-    
+
     elseif ($action === 'update_contact_settings') {
-        // 更新联系方式设置
         $contactSettings = [
-            'contact_email_primary' => trim($_POST['contact_email_primary'] ?? ''),
-            'contact_email_support' => trim($_POST['contact_email_support'] ?? ''),
-            'contact_wechat_id' => trim($_POST['contact_wechat_id'] ?? ''),
+            'contact_email_1' => trim($_POST['contact_email_1'] ?? ''),
+            'contact_email_2' => trim($_POST['contact_email_2'] ?? ''),
+            'contact_wechat' => trim($_POST['contact_wechat'] ?? ''),
             'contact_wechat_hours' => trim($_POST['contact_wechat_hours'] ?? ''),
-            'contact_qq_main' => trim($_POST['contact_qq_main'] ?? ''),
-            'contact_qq_newbie' => trim($_POST['contact_qq_newbie'] ?? ''),
+            'contact_qq_group_1' => trim($_POST['contact_qq_group_1'] ?? ''),
+            'contact_qq_group_2' => trim($_POST['contact_qq_group_2'] ?? ''),
             'contact_xiaohongshu' => trim($_POST['contact_xiaohongshu'] ?? ''),
-            'contact_xiaohongshu_desc' => trim($_POST['contact_xiaohongshu_desc'] ?? '')
+            'contact_xiaohongshu_desc' => trim($_POST['contact_xiaohongshu_desc'] ?? ''),
+            'contact_phone' => trim($_POST['contact_phone'] ?? ''),
+            'contact_address' => trim($_POST['contact_address'] ?? ''),
+            'contact_business_hours' => trim($_POST['contact_business_hours'] ?? ''),
+            'contact_notice' => trim($_POST['contact_notice'] ?? '')
         ];
 
         $updated = 0;
@@ -64,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = '联系方式设置更新失败';
         }
     }
-
+    
     elseif ($action === 'clear_cache') {
         // 清理缓存
         if (class_exists('SimpleCache')) {
@@ -154,7 +157,20 @@ $defaults = [
     'max_featured_readers' => '6',
     'registration_link_hours' => '24',
     'readers_per_page' => '12',
-    'admin_items_per_page' => '20'
+    'admin_items_per_page' => '20',
+    // 联系方式设置默认值
+    'contact_email_1' => 'info@example.com',
+    'contact_email_2' => 'support@example.com',
+    'contact_wechat' => 'mystical_service',
+    'contact_wechat_hours' => '9:00-21:00',
+    'contact_qq_group_1' => '123456789',
+    'contact_qq_group_2' => '987654321',
+    'contact_xiaohongshu' => '@神秘学园',
+    'contact_xiaohongshu_desc' => '每日分享占卜知识',
+    'contact_phone' => '',
+    'contact_address' => '',
+    'contact_business_hours' => '周一至周日 9:00-21:00',
+    'contact_notice' => '我们会在24小时内回复您的留言'
 ];
 
 // 合并设置
@@ -301,15 +317,15 @@ if (is_dir($uploadDir)) {
                     <div class="setting-item">
                         <div class="setting-label">主要联系邮箱</div>
                         <div class="setting-control">
-                            <input type="email" name="contact_email_primary" value="<?php echo h(getSetting('contact_email_primary', 'info@example.com')); ?>" required>
+                            <input type="email" name="contact_email_1" value="<?php echo h($currentSettings['contact_email_1']); ?>" required>
                         </div>
-                        <div class="setting-description">主要的联系邮箱地址</div>
+                        <div class="setting-description">显示在联系页面的主要邮箱地址</div>
                     </div>
 
                     <div class="setting-item">
-                        <div class="setting-label">客服支持邮箱</div>
+                        <div class="setting-label">客服邮箱</div>
                         <div class="setting-control">
-                            <input type="email" name="contact_email_support" value="<?php echo h(getSetting('contact_email_support', 'support@example.com')); ?>" required>
+                            <input type="email" name="contact_email_2" value="<?php echo h($currentSettings['contact_email_2']); ?>">
                         </div>
                         <div class="setting-description">客服支持邮箱地址</div>
                     </div>
@@ -317,31 +333,31 @@ if (is_dir($uploadDir)) {
                     <div class="setting-item">
                         <div class="setting-label">微信客服号</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_wechat_id" value="<?php echo h(getSetting('contact_wechat_id', 'mystical_service')); ?>">
+                            <input type="text" name="contact_wechat" value="<?php echo h($currentSettings['contact_wechat']); ?>">
                         </div>
-                        <div class="setting-description">微信客服的微信号</div>
+                        <div class="setting-description">微信客服账号</div>
                     </div>
 
                     <div class="setting-item">
-                        <div class="setting-label">微信客服工作时间</div>
+                        <div class="setting-label">微信客服时间</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_wechat_hours" value="<?php echo h(getSetting('contact_wechat_hours', '9:00-21:00')); ?>">
+                            <input type="text" name="contact_wechat_hours" value="<?php echo h($currentSettings['contact_wechat_hours']); ?>">
                         </div>
                         <div class="setting-description">微信客服的工作时间</div>
                     </div>
 
                     <div class="setting-item">
-                        <div class="setting-label">官方QQ交流群</div>
+                        <div class="setting-label">官方QQ群</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_qq_main" value="<?php echo h(getSetting('contact_qq_main', '123456789')); ?>">
+                            <input type="text" name="contact_qq_group_1" value="<?php echo h($currentSettings['contact_qq_group_1']); ?>">
                         </div>
-                        <div class="setting-description">官方QQ交流群号</div>
+                        <div class="setting-description">官方交流QQ群号</div>
                     </div>
 
                     <div class="setting-item">
-                        <div class="setting-label">新手学习QQ群</div>
+                        <div class="setting-label">新手学习群</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_qq_newbie" value="<?php echo h(getSetting('contact_qq_newbie', '987654321')); ?>">
+                            <input type="text" name="contact_qq_group_2" value="<?php echo h($currentSettings['contact_qq_group_2']); ?>">
                         </div>
                         <div class="setting-description">新手学习QQ群号</div>
                     </div>
@@ -349,20 +365,52 @@ if (is_dir($uploadDir)) {
                     <div class="setting-item">
                         <div class="setting-label">小红书账号</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_xiaohongshu" value="<?php echo h(getSetting('contact_xiaohongshu', '@神秘学园')); ?>">
+                            <input type="text" name="contact_xiaohongshu" value="<?php echo h($currentSettings['contact_xiaohongshu']); ?>">
                         </div>
-                        <div class="setting-description">小红书账号名称</div>
+                        <div class="setting-description">小红书官方账号</div>
                     </div>
 
                     <div class="setting-item">
-                        <div class="setting-label">小红书账号描述</div>
+                        <div class="setting-label">小红书描述</div>
                         <div class="setting-control">
-                            <input type="text" name="contact_xiaohongshu_desc" value="<?php echo h(getSetting('contact_xiaohongshu_desc', '每日分享占卜知识')); ?>">
+                            <input type="text" name="contact_xiaohongshu_desc" value="<?php echo h($currentSettings['contact_xiaohongshu_desc']); ?>">
                         </div>
                         <div class="setting-description">小红书账号的描述信息</div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">保存联系方式</button>
+                    <div class="setting-item">
+                        <div class="setting-label">联系电话</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_phone" value="<?php echo h($currentSettings['contact_phone']); ?>">
+                        </div>
+                        <div class="setting-description">联系电话（可选，留空则不显示）</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">联系地址</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_address" value="<?php echo h($currentSettings['contact_address']); ?>">
+                        </div>
+                        <div class="setting-description">联系地址（可选，留空则不显示）</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">营业时间</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_business_hours" value="<?php echo h($currentSettings['contact_business_hours']); ?>">
+                        </div>
+                        <div class="setting-description">营业或服务时间</div>
+                    </div>
+
+                    <div class="setting-item">
+                        <div class="setting-label">联系页面提示</div>
+                        <div class="setting-control">
+                            <input type="text" name="contact_notice" value="<?php echo h($currentSettings['contact_notice']); ?>">
+                        </div>
+                        <div class="setting-description">在联系页面显示的提示信息</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存联系方式设置</button>
                 </form>
             </div>
 

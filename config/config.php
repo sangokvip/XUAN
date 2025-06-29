@@ -23,22 +23,22 @@ define('UPLOAD_PATH', 'uploads/');
 define('PHOTO_PATH', UPLOAD_PATH . 'photos/');
 define('PRICE_LIST_PATH', UPLOAD_PATH . 'price_lists/');
 define('CERTIFICATES_PATH', UPLOAD_PATH . 'certificates/');
-define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5MB
+define('MAX_FILE_SIZE', 2 * 1024 * 1024); // 2MB (降低文件大小限制)
 define('MAX_CERTIFICATES', 10); // 最多上传10个证书
-define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
+define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 
 // 图片优化配置
-define('IMAGE_OPTIMIZATION_ENABLED', true); // 是否启用图片优化
-define('MAX_IMAGE_WIDTH', 800);             // 图片最大宽度
-define('MAX_IMAGE_HEIGHT', 800);            // 图片最大高度
-define('IMAGE_QUALITY', 85);                // JPEG压缩质量 (1-100)
-define('WEBP_ENABLED', true);               // 是否启用WebP格式
-define('THUMBNAIL_ENABLED', true);          // 是否生成缩略图
-
-// 头像专用配置
-define('AVATAR_MAX_WIDTH', 400);            // 头像最大宽度
-define('AVATAR_MAX_HEIGHT', 400);           // 头像最大高度
-define('AVATAR_QUALITY', 90);               // 头像压缩质量
+define('IMAGE_OPTIMIZATION_ENABLED', true);
+define('AVATAR_MAX_WIDTH', 800); // 头像最大宽度
+define('AVATAR_MAX_HEIGHT', 800); // 头像最大高度
+define('AVATAR_QUALITY', 75); // 压缩质量 (降低到75%)
+define('WEBP_ENABLED', true); // 启用WebP格式
+define('THUMBNAIL_ENABLED', true); // 启用缩略图生成
+define('PROGRESSIVE_JPEG', true); // 启用渐进式JPEG
+define('CLIENT_SIDE_COMPRESSION', true); // 启用客户端压缩
+define('CLIENT_COMPRESSION_QUALITY', 0.65); // 客户端压缩质量
+define('CLIENT_MAX_WIDTH', 1920); // 客户端最大宽度
+define('CLIENT_MAX_HEIGHT', 1920); // 客户端最大高度
 
 // 安全配置
 define('PASSWORD_MIN_LENGTH', 6);

@@ -324,6 +324,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
         }
 
+        /* 登录类型选择器 */
+        .login-type-selector {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 6px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 280px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .login-type-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
+            position: relative;
+            overflow: hidden;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-type-option.active {
+            background: linear-gradient(135deg, #d4af37, #f1c40f);
+            color: #000;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4);
+            font-weight: 600;
+        }
+
+        .login-type-option:not(.active) {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .login-type-option:not(.active):hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .login-type-option::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .login-type-option:hover::before {
+            left: 100%;
+        }
+
+        .login-type-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
         /* 响应式设计 */
         @media (max-width: 480px) {
             .auth-container {
@@ -337,6 +406,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .auth-title {
                 font-size: 24px;
             }
+
+            .login-type-option {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+
+            .login-type-icon {
+                margin-right: 6px;
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -344,6 +423,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="auth-container">
         <div class="auth-card">
             <div class="star-icon"></div>
+
+            <!-- 登录类型选择器 -->
+            <div class="login-type-selector">
+                <a href="login.php" class="login-type-option">
+                    <span class="login-type-icon">👤</span>
+                    用户登录
+                </a>
+                <div class="login-type-option active">
+                    <span class="login-type-icon">🔮</span>
+                    占卜师登录
+                </div>
+            </div>
 
             <h1 class="auth-title">占卜师登录</h1>
 
@@ -381,8 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
 
             <div class="auth-links">
-                <a href="forgot_password.php?type=reader" class="auth-link">忘记密码？</a><br><br>
-                <a href="login.php" class="auth-link">普通用户登录</a>
+                <a href="forgot_password.php?type=reader" class="auth-link">忘记密码？</a><br>
                 <a href="../index.php" class="auth-link">返回首页</a>
             </div>
         </div>

@@ -237,6 +237,27 @@ function deleteFile($filePath) {
 }
 
 /**
+ * 安全删除文件 - 防止路径遍历攻击
+ */
+function safeDeleteFile($relativePath, $baseDir = '../') {
+    if (empty($relativePath)) {
+        return true;
+    }
+
+    $fullPath = $baseDir . $relativePath;
+
+    // 获取真实路径并检查是否在允许的目录内
+    $realPath = realpath($fullPath);
+    $realBaseDir = realpath($baseDir);
+
+    if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($fullPath)) {
+        return unlink($fullPath);
+    }
+
+    return true; // 如果文件不存在或路径不安全，返回true（视为删除成功）
+}
+
+/**
  * 获取系统设置
  */
 function getSetting($key, $default = null) {
@@ -437,11 +458,8 @@ function cleanPhotoPath($path) {
 /**
  * 获取占卜师照片URL
  * 处理照片路径，如果没有照片则返回默认头像
- * @param array $reader 占卜师数据
- * @param bool $useCircle 是否优先使用圆形头像
- * @param string $relativePath 相对路径前缀（如 '../' 用于子目录）
  */
-function getReaderPhotoUrl($reader, $useCircle = false, $relativePath = '') {
+function getReaderPhotoUrl($reader, $useCircle = false) {
     $photoSrc = '';
 
     if ($useCircle && !empty($reader['photo_circle'])) {
@@ -449,383 +467,122 @@ function getReaderPhotoUrl($reader, $useCircle = false, $relativePath = '') {
     } elseif (!empty($reader['photo'])) {
         $photoSrc = cleanPhotoPath($reader['photo']);
     } else {
-        // 根据性别和ID使用默认头像（从m1-m4或f1-f4中基于ID选择）
-        $readerId = isset($reader['id']) ? $reader['id'] : 1;
-        if ($reader['gender'] === 'female') {
-            $avatarNum = (($readerId - 1) % 4) + 1;
-            $photoSrc = "img/f{$avatarNum}.jpg";
-        } else {
-            $avatarNum = (($readerId - 1) % 4) + 1;
-            $photoSrc = "img/m{$avatarNum}.jpg";
-        }
-    }
-
-    return $relativePath . $photoSrc;
-}
-
-/**
- * 获取用户头像URL
- * 处理头像路径，如果没有头像则返回默认头像
- * @param array $user 用户数据
- * @param string $relativePath 相对路径前缀（如 '../' 用于子目录）
- */
-function getUserAvatarUrl($user, $relativePath = '') {
-    $avatarSrc = '';
-
-    if (!empty($user['avatar'])) {
-        $avatarSrc = cleanPhotoPath($user['avatar']);
-    } else {
         // 根据性别使用默认头像
-        $avatarSrc = ($user['gender'] === 'female') ? 'img/nf.jpg' : 'img/nm.jpg';
+        $photoSrc = ($reader['gender'] === 'female') ? 'img/tf.jpg' : 'img/tm.jpg';
     }
 
-    return $relativePath . $avatarSrc;
+    return $photoSrc;
 }
 
 /**
- * 优化图片上传处理（压缩、调整尺寸、生成缩略图）
- * @param array $file 上传的文件信息
- * @param string $uploadPath 上传目录
- * @param array $options 优化选项
- * @return array 处理结果
+ * 优化上传图片文件
+ * 包括压缩、生成多尺寸缩略图、WebP转换
  */
-function uploadOptimizedImage($file, $uploadPath, $options = []) {
-    // 默认选项
-    $defaultOptions = [
-        'max_width' => 800,           // 最大宽度
-        'max_height' => 800,          // 最大高度
-        'quality' => 85,              // JPEG质量
-        'generate_thumbnails' => true, // 是否生成缩略图
-        'thumbnail_sizes' => [        // 缩略图尺寸
-            'small' => [150, 150],
-            'medium' => [300, 300],
-            'large' => [600, 600]
-        ],
-        'webp_support' => true,       // 是否生成WebP格式
-        'allowed_types' => ALLOWED_IMAGE_TYPES
+function uploadOptimizedImage($file, $uploadPath = PHOTO_PATH) {
+    $result = [
+        'success' => false,
+        'message' => '',
+        'filename' => '',
+        'optimized' => [],
+        'webp' => [],
+        'original_size' => 0,
+        'optimized_size' => 0
     ];
-
-    $options = array_merge($defaultOptions, $options);
-
-    // 基本验证
-    $basicUpload = uploadFile($file, $uploadPath, $options['allowed_types']);
-    if (!$basicUpload['success']) {
-        return $basicUpload;
-    }
-
-    $originalPath = $basicUpload['path'];
-    $fileName = $basicUpload['filename'];
-    $fileInfo = pathinfo($fileName);
-    $baseName = $fileInfo['filename'];
-    $extension = $fileInfo['extension'];
 
     try {
-        // 优化原图
-        $optimizedPath = $uploadPath . $baseName . '_optimized.' . $extension;
-        if (optimizeImage($originalPath, $optimizedPath, $options)) {
-            // 删除原始文件，使用优化后的文件
-            unlink($originalPath);
-            rename($optimizedPath, $originalPath);
+        // 基础验证
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            throw new Exception('无效的上传文件');
         }
 
-        $result = [
-            'success' => true,
-            'filename' => $fileName,
-            'path' => $originalPath,
-            'thumbnails' => [],
-            'webp_versions' => []
-        ];
+        // 检查文件大小
+        if ($file['size'] > MAX_FILE_SIZE) {
+            throw new Exception('文件大小超过限制（最大 ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB）');
+        }
 
-        // 生成缩略图
-        if ($options['generate_thumbnails']) {
-            foreach ($options['thumbnail_sizes'] as $sizeName => $size) {
-                $thumbPath = $uploadPath . $baseName . '_' . $sizeName . '.' . $extension;
-                if (createThumbnail($originalPath, $thumbPath, $size[0], $size[1], $options['quality'])) {
-                    $result['thumbnails'][$sizeName] = $thumbPath;
+        // 检查文件类型
+        $imageInfo = getimagesize($file['tmp_name']);
+        if (!$imageInfo) {
+            throw new Exception('不是有效的图片文件');
+        }
 
-                    // 生成WebP缩略图
-                    if ($options['webp_support'] && function_exists('imagewebp')) {
-                        $webpThumbPath = $uploadPath . $baseName . '_' . $sizeName . '.webp';
-                        if (convertToWebP($thumbPath, $webpThumbPath, $options['quality'])) {
-                            $result['webp_versions'][$sizeName] = $webpThumbPath;
-                        }
-                    }
-                }
+        $allowedTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF];
+        if (!in_array($imageInfo[2], $allowedTypes)) {
+            throw new Exception('不支持的图片格式，请使用 JPG、PNG 或 GIF');
+        }
+
+        // 生成安全的文件名
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $filename = generateSecureFilename($file['name']);
+        $uploadFile = $uploadPath . $filename;
+
+        // 确保上传目录存在
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0755, true);
+        }
+
+        // 移动原始文件
+        if (!move_uploaded_file($file['tmp_name'], $uploadFile)) {
+            throw new Exception('文件上传失败');
+        }
+
+        $result['original_size'] = filesize($uploadFile);
+
+        // 使用图片优化器处理
+        require_once __DIR__ . '/ImageOptimizer.php';
+        $optimizer = new ImageOptimizer($uploadPath);
+        $optimizeResult = $optimizer->processUploadedImage($uploadFile, $filename);
+
+        if (!$optimizeResult['success']) {
+            // 如果优化失败，删除原文件并返回错误
+            unlink($uploadFile);
+            throw new Exception($optimizeResult['error'] ?: '图片优化失败');
+        }
+
+        // 计算优化后的总大小
+        $optimizedSize = 0;
+        foreach ($optimizeResult['optimized'] as $path) {
+            $fullPath = $uploadPath . $path;
+            if (file_exists($fullPath)) {
+                $optimizedSize += filesize($fullPath);
             }
         }
 
-        // 生成主图的WebP版本
-        if ($options['webp_support'] && function_exists('imagewebp')) {
-            $webpPath = $uploadPath . $baseName . '.webp';
-            if (convertToWebP($originalPath, $webpPath, $options['quality'])) {
-                $result['webp_versions']['original'] = $webpPath;
-            }
-        }
+        $result['success'] = true;
+        $result['filename'] = $filename;
+        $result['optimized'] = $optimizeResult['optimized'];
+        $result['webp'] = $optimizeResult['webp'];
+        $result['optimized_size'] = $optimizedSize;
+        $result['message'] = '图片上传并优化成功';
 
-        return $result;
+        // 记录优化统计
+        $compressionRatio = $result['original_size'] > 0 ?
+            round((1 - $optimizedSize / $result['original_size']) * 100, 1) : 0;
+
+        error_log("Image optimization: {$filename}, Original: {$result['original_size']} bytes, Optimized: {$optimizedSize} bytes, Compression: {$compressionRatio}%");
 
     } catch (Exception $e) {
-        // 清理已创建的文件
-        if (file_exists($originalPath)) {
-            unlink($originalPath);
+        $result['message'] = $e->getMessage();
+
+        // 清理可能已上传的文件
+        if (!empty($filename) && file_exists($uploadPath . $filename)) {
+            unlink($uploadPath . $filename);
         }
-        return ['success' => false, 'message' => '图片优化失败：' . $e->getMessage()];
-    }
-}
-
-/**
- * 优化图片（压缩和调整尺寸）
- */
-function optimizeImage($sourcePath, $destinationPath, $options) {
-    $imageInfo = getimagesize($sourcePath);
-    if (!$imageInfo) {
-        return false;
-    }
-
-    list($width, $height, $type) = $imageInfo;
-
-    // 如果图片尺寸已经合适且文件大小不大，直接复制
-    if ($width <= $options['max_width'] && $height <= $options['max_height'] && filesize($sourcePath) < 500 * 1024) {
-        return copy($sourcePath, $destinationPath);
-    }
-
-    // 计算新尺寸
-    $ratio = min($options['max_width'] / $width, $options['max_height'] / $height, 1);
-    $newWidth = (int)($width * $ratio);
-    $newHeight = (int)($height * $ratio);
-
-    // 创建源图像
-    $sourceImage = null;
-    switch ($type) {
-        case IMAGETYPE_JPEG:
-            $sourceImage = imagecreatefromjpeg($sourcePath);
-            break;
-        case IMAGETYPE_PNG:
-            $sourceImage = imagecreatefrompng($sourcePath);
-            break;
-        case IMAGETYPE_GIF:
-            $sourceImage = imagecreatefromgif($sourcePath);
-            break;
-        default:
-            return false;
-    }
-
-    if (!$sourceImage) {
-        return false;
-    }
-
-    // 创建目标图像
-    $targetImage = imagecreatetruecolor($newWidth, $newHeight);
-
-    // 保持透明度
-    if ($type == IMAGETYPE_PNG || $type == IMAGETYPE_GIF) {
-        imagealphablending($targetImage, false);
-        imagesavealpha($targetImage, true);
-        $transparent = imagecolorallocatealpha($targetImage, 255, 255, 255, 127);
-        imagefill($targetImage, 0, 0, $transparent);
-    }
-
-    // 缩放图像
-    imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-
-    // 保存图像
-    $result = false;
-    switch ($type) {
-        case IMAGETYPE_JPEG:
-            $result = imagejpeg($targetImage, $destinationPath, $options['quality']);
-            break;
-        case IMAGETYPE_PNG:
-            $result = imagepng($targetImage, $destinationPath, 6);
-            break;
-        case IMAGETYPE_GIF:
-            $result = imagegif($targetImage, $destinationPath);
-            break;
-    }
-
-    // 清理资源
-    imagedestroy($sourceImage);
-    imagedestroy($targetImage);
-
-    return $result;
-}
-
-/**
- * 转换图片为WebP格式
- */
-function convertToWebP($sourcePath, $destinationPath, $quality = 85) {
-    if (!function_exists('imagewebp')) {
-        return false;
-    }
-
-    $imageInfo = getimagesize($sourcePath);
-    if (!$imageInfo) {
-        return false;
-    }
-
-    list($width, $height, $type) = $imageInfo;
-
-    $sourceImage = null;
-    switch ($type) {
-        case IMAGETYPE_JPEG:
-            $sourceImage = imagecreatefromjpeg($sourcePath);
-            break;
-        case IMAGETYPE_PNG:
-            $sourceImage = imagecreatefrompng($sourcePath);
-            break;
-        case IMAGETYPE_GIF:
-            $sourceImage = imagecreatefromgif($sourcePath);
-            break;
-        default:
-            return false;
-    }
-
-    if (!$sourceImage) {
-        return false;
-    }
-
-    $result = imagewebp($sourceImage, $destinationPath, $quality);
-    imagedestroy($sourceImage);
-
-    return $result;
-}
-
-/**
- * 获取优化的图片URL（支持WebP和缩略图）
- * @param string $imagePath 原始图片路径
- * @param string $size 尺寸（small, medium, large, original）
- * @param string $relativePath 相对路径前缀
- * @return array 包含多种格式的图片URL
- */
-function getOptimizedImageUrl($imagePath, $size = 'medium', $relativePath = '') {
-    if (empty($imagePath)) {
-        return null;
-    }
-
-    $cleanPath = cleanPhotoPath($imagePath);
-    $pathInfo = pathinfo($cleanPath);
-    $baseName = $pathInfo['filename'];
-    $extension = $pathInfo['extension'];
-    $directory = $pathInfo['dirname'];
-
-    $result = [
-        'original' => $relativePath . $cleanPath,
-        'webp' => null,
-        'thumbnail' => null,
-        'webp_thumbnail' => null
-    ];
-
-    // 构建缩略图路径
-    if ($size !== 'original') {
-        $thumbnailPath = $directory . '/' . $baseName . '_' . $size . '.' . $extension;
-        $webpThumbnailPath = $directory . '/' . $baseName . '_' . $size . '.webp';
-
-        if (file_exists($thumbnailPath)) {
-            $result['thumbnail'] = $relativePath . $thumbnailPath;
-        }
-
-        if (file_exists($webpThumbnailPath)) {
-            $result['webp_thumbnail'] = $relativePath . $webpThumbnailPath;
-        }
-    }
-
-    // 构建WebP原图路径
-    $webpPath = $directory . '/' . $baseName . '.webp';
-    if (file_exists($webpPath)) {
-        $result['webp'] = $relativePath . $webpPath;
     }
 
     return $result;
 }
 
 /**
- * 生成响应式图片HTML标签
- * @param string $imagePath 图片路径
- * @param string $alt 替代文本
- * @param string $size 尺寸
- * @param array $attributes 额外属性
- * @param string $relativePath 相对路径前缀
- * @return string HTML标签
+ * 获取优化后的图片URL
  */
-function generateResponsiveImage($imagePath, $alt = '', $size = 'medium', $attributes = [], $relativePath = '') {
-    $imageUrls = getOptimizedImageUrl($imagePath, $size, $relativePath);
-
-    if (!$imageUrls) {
+function getOptimizedImageUrl($filename, $size = 'medium', $preferWebP = true) {
+    if (empty($filename)) {
         return '';
     }
 
-    // 构建属性字符串
-    $attrString = '';
-    foreach ($attributes as $key => $value) {
-        $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
-    }
-
-    // 优先使用缩略图，然后是原图
-    $mainSrc = $imageUrls['thumbnail'] ?: $imageUrls['original'];
-    $webpSrc = $imageUrls['webp_thumbnail'] ?: $imageUrls['webp'];
-
-    if ($webpSrc) {
-        // 支持WebP的浏览器使用WebP，否则使用原格式
-        return '<picture>
-                    <source srcset="' . htmlspecialchars($webpSrc) . '" type="image/webp">
-                    <img src="' . htmlspecialchars($mainSrc) . '" alt="' . htmlspecialchars($alt) . '"' . $attrString . '>
-                </picture>';
-    } else {
-        // 只有原格式
-        return '<img src="' . htmlspecialchars($mainSrc) . '" alt="' . htmlspecialchars($alt) . '"' . $attrString . '>';
-    }
-}
-
-/**
- * 获取占卜师优化头像HTML
- */
-function getReaderOptimizedAvatar($reader, $size = 'medium', $useCircle = false, $relativePath = '', $attributes = []) {
-    $photoPath = '';
-
-    if ($useCircle && !empty($reader['photo_circle'])) {
-        $photoPath = $reader['photo_circle'];
-    } elseif (!empty($reader['photo'])) {
-        $photoPath = $reader['photo'];
-    } else {
-        // 使用默认头像
-        $readerId = isset($reader['id']) ? $reader['id'] : 1;
-        if ($reader['gender'] === 'female') {
-            $avatarNum = (($readerId - 1) % 4) + 1;
-            $photoPath = "img/f{$avatarNum}.jpg";
-        } else {
-            $avatarNum = (($readerId - 1) % 4) + 1;
-            $photoPath = "img/m{$avatarNum}.jpg";
-        }
-
-        // 默认头像直接返回简单的img标签
-        $attrString = '';
-        foreach ($attributes as $key => $value) {
-            $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
-        }
-        return '<img src="' . htmlspecialchars($relativePath . $photoPath) . '" alt="' . htmlspecialchars($reader['full_name'] ?? '') . '"' . $attrString . '>';
-    }
-
-    return generateResponsiveImage($photoPath, $reader['full_name'] ?? '', $size, $attributes, $relativePath);
-}
-
-/**
- * 获取用户优化头像HTML
- */
-function getUserOptimizedAvatar($user, $size = 'medium', $relativePath = '', $attributes = []) {
-    $avatarPath = '';
-
-    if (!empty($user['avatar'])) {
-        $avatarPath = $user['avatar'];
-        return generateResponsiveImage($avatarPath, $user['full_name'] ?? '', $size, $attributes, $relativePath);
-    } else {
-        // 使用默认头像
-        $avatarPath = ($user['gender'] === 'female') ? 'img/nf.jpg' : 'img/nm.jpg';
-
-        // 默认头像直接返回简单的img标签
-        $attrString = '';
-        foreach ($attributes as $key => $value) {
-            $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
-        }
-        return '<img src="' . htmlspecialchars($relativePath . $avatarPath) . '" alt="' . htmlspecialchars($user['full_name'] ?? '') . '"' . $attrString . '>';
-    }
+    require_once __DIR__ . '/ImageOptimizer.php';
+    $optimizer = new ImageOptimizer();
+    return $optimizer->getOptimizedImageUrl($filename, $size, $preferWebP);
 }
 ?>

@@ -375,7 +375,22 @@ $pageTitle = "{$tagName} - 占卜师";
                 <?php foreach ($readers as $reader): ?>
                     <div class="reader-card">
                         <?php
-                        $photoSrc = getReaderPhotoUrl($reader, true);
+                        $photoSrc = '';
+                        if (!empty($reader['photo_circle'])) {
+                            $photoSrc = $reader['photo_circle'];
+                            // 清理路径格式
+                            $photoSrc = str_replace('../', '', $photoSrc);
+                            $photoSrc = ltrim($photoSrc, '/');
+                        } elseif (!empty($reader['photo'])) {
+                            $photoSrc = $reader['photo'];
+                            // 清理路径格式
+                            $photoSrc = str_replace('../', '', $photoSrc);
+                            $photoSrc = ltrim($photoSrc, '/');
+                        } else {
+                            // 使用新的默认头像系统
+                            require_once 'includes/AvatarHelper.php';
+                            $photoSrc = AvatarHelper::getDefaultAvatar($reader['gender'], $reader['id']);
+                        }
                         ?>
                         <img src="<?php echo h($photoSrc); ?>"
                              alt="<?php echo h($reader['full_name']); ?>"

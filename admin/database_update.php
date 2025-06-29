@@ -45,7 +45,7 @@ $availableUpdates = [
             "UPDATE users SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
             "UPDATE readers SET gender = CASE WHEN RAND() > 0.5 THEN 'male' ELSE 'female' END WHERE gender IS NULL",
             "UPDATE users SET avatar = CASE WHEN gender = 'male' THEN 'img/nm.jpg' WHEN gender = 'female' THEN 'img/nf.jpg' ELSE 'img/nm.jpg' END WHERE avatar IS NULL",
-            "UPDATE readers SET photo = CASE WHEN gender = 'male' THEN CONCAT('img/m', (id % 4) + 1, '.jpg') WHEN gender = 'female' THEN CONCAT('img/f', (id % 4) + 1, '.jpg') ELSE 'img/m1.jpg' END WHERE photo IS NULL OR photo = ''"
+            "UPDATE readers SET photo = CASE WHEN gender = 'male' THEN 'img/tm.jpg' WHEN gender = 'female' THEN 'img/tf.jpg' ELSE 'img/tm.jpg' END WHERE photo IS NULL OR photo = ''"
         ],
         'check_sql' => "SHOW COLUMNS FROM users LIKE 'gender'"
     ],
@@ -56,6 +56,45 @@ $availableUpdates = [
             "ALTER TABLE readers ADD COLUMN view_count INT DEFAULT 0 COMMENT '查看次数' AFTER description"
         ],
         'check_sql' => "SHOW COLUMNS FROM readers LIKE 'view_count'"
+    ],
+    'add_contact_messages_table' => [
+        'name' => '创建联系留言表和联系方式设置',
+        'description' => '创建contact_messages表用于存储用户联系留言，并添加联系方式相关设置项',
+        'sql' => [
+            "CREATE TABLE IF NOT EXISTS contact_messages (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL COMMENT '留言者姓名',
+                email VARCHAR(255) NOT NULL COMMENT '留言者邮箱',
+                subject VARCHAR(255) NOT NULL COMMENT '留言主题',
+                message TEXT NOT NULL COMMENT '留言内容',
+                ip_address VARCHAR(45) DEFAULT NULL COMMENT '留言者IP地址',
+                user_agent TEXT DEFAULT NULL COMMENT '用户代理信息',
+                status ENUM('unread', 'read', 'replied') DEFAULT 'unread' COMMENT '状态：未读、已读、已回复',
+                admin_reply TEXT DEFAULT NULL COMMENT '管理员回复',
+                replied_by INT DEFAULT NULL COMMENT '回复的管理员ID',
+                replied_at TIMESTAMP NULL DEFAULT NULL COMMENT '回复时间',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at),
+                INDEX idx_email (email),
+                FOREIGN KEY (replied_by) REFERENCES admins(id) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='联系留言表'",
+            "INSERT IGNORE INTO settings (setting_key, setting_value, description) VALUES
+                ('contact_email_1', 'info@example.com', '主要联系邮箱'),
+                ('contact_email_2', 'support@example.com', '客服邮箱'),
+                ('contact_wechat', 'mystical_service', '微信客服号'),
+                ('contact_wechat_hours', '9:00-21:00', '微信客服工作时间'),
+                ('contact_qq_group_1', '123456789', '官方交流QQ群'),
+                ('contact_qq_group_2', '987654321', '新手学习QQ群'),
+                ('contact_xiaohongshu', '@神秘学园', '小红书账号'),
+                ('contact_xiaohongshu_desc', '每日分享占卜知识', '小红书描述'),
+                ('contact_phone', '', '联系电话（可选）'),
+                ('contact_address', '', '联系地址（可选）'),
+                ('contact_business_hours', '周一至周日 9:00-21:00', '营业时间'),
+                ('contact_notice', '我们会在24小时内回复您的留言', '联系页面提示信息')"
+        ],
+        'check_sql' => "SHOW TABLES LIKE 'contact_messages'"
     ],
     'clean_specialty_tags' => [
         'name' => '清理专长标签',
@@ -189,16 +228,6 @@ $availableUpdates = [
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='消息阅读记录表'"
         ],
         'check_sql' => "SHOW TABLES LIKE 'admin_messages'"
-    ],
-    'add_divination_types' => [
-        'name' => '添加占卜类型字段',
-        'description' => '为塔罗师表添加占卜类型相关字段，用于存储西玄/东玄分类和主要身份标签',
-        'sql' => [
-            "ALTER TABLE readers ADD COLUMN divination_types TEXT DEFAULT NULL COMMENT '占卜类型（JSON格式）' AFTER specialties",
-            "ALTER TABLE readers ADD COLUMN primary_identity VARCHAR(50) DEFAULT NULL COMMENT '主要身份标签' AFTER divination_types",
-            "ALTER TABLE readers ADD COLUMN identity_category ENUM('western', 'eastern') DEFAULT NULL COMMENT '身份类别：western-西玄，eastern-东玄' AFTER primary_identity"
-        ],
-        'check_sql' => "SHOW COLUMNS FROM readers LIKE 'divination_types'"
     ]
 ];
 

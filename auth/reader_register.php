@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'gender' => $_POST['gender'] ?? '',
         'experience_years' => (int)($_POST['experience_years'] ?? 0),
         'description' => trim($_POST['description'] ?? ''),
-        'nationality' => $_POST['nationality'] ?? '',
+        'nationality' => $_POST['nationality'] ?? 'CN',
         'divination_types' => $_POST['divination_types'] ?? [],
         'primary_identity' => $_POST['primary_identity'] ?? '',
         // 联系方式字段
@@ -119,6 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         empty($data['full_name']) || empty($specialties) || empty($data['nationality']) ||
         empty($data['divination_types']) || empty($data['primary_identity'])) {
         $errors[] = '请填写所有必填字段';
+    }
+
+    // 验证用户名格式
+    if (!empty($data['username'])) {
+        if (strlen($data['username']) < 3) {
+            $errors[] = '用户名至少3个字符';
+        } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $data['username'])) {
+            $errors[] = '用户名只能包含英文字母、数字和下划线';
+        }
     }
 
     // 检查是否使用默认头像
@@ -1244,7 +1253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <option value="">请选择国籍</option>
                                     <?php
                                     $nationalities = DivinationConfig::getNationalities();
-                                    $selectedNationality = $_POST['nationality'] ?? '';
+                                    $selectedNationality = $_POST['nationality'] ?? 'CN';
                                     foreach ($nationalities as $code => $name):
                                     ?>
                                         <option value="<?php echo h($code); ?>" <?php echo $selectedNationality === $code ? 'selected' : ''; ?>>

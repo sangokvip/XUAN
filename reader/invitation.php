@@ -4,7 +4,7 @@ require_once '../config/config.php';
 require_once '../includes/InvitationManager.php';
 
 // 检查占卜师登录
-requireReaderLogin('../auth/reader_login.php');
+requireReaderLogin();
 
 $readerId = $_SESSION['reader_id'];
 $invitationManager = new InvitationManager();
@@ -235,8 +235,16 @@ $pageTitle = '邀请管理';
         <?php include '../includes/reader_mobile_nav.php'; ?>
     </div>
 
+    <!-- 移动端菜单按钮 -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <span id="menuIcon">☰</span>
+    </button>
+    
+    <!-- 移动端侧栏覆盖层 -->
+    <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
+    
     <div class="reader-container">
-        <div class="reader-sidebar">
+        <div class="reader-sidebar" id="readerSidebar">
             <div class="reader-sidebar-header">
                 <h3>占卜师后台</h3>
             </div>
@@ -443,5 +451,6 @@ $pageTitle = '邀请管理';
             </div> <!-- reader-content-inner -->
         </div> <!-- reader-content -->
     </div> <!-- reader-container -->
+    <script src="../assets/js/reader-mobile-menu.js"></script>
 </body>
 </html>

@@ -13,7 +13,7 @@ if (!defined('SITE_URL')) {
         <div class="header-content">
             <div class="logo">
                 <a href="<?php echo SITE_URL; ?>/index.php">
-                    <h1><?php echo getSiteName(); ?></h1>
+                    <img src="<?php echo SITE_URL; ?>/img/logo.png" alt="<?php echo getSiteName(); ?>" class="logo-image">
                 </a>
             </div>
 
@@ -28,7 +28,7 @@ if (!defined('SITE_URL')) {
                 <ul>
                     <li><a href="<?php echo SITE_URL; ?>/index.php">首页</a></li>
                     <li><a href="<?php echo SITE_URL; ?>/readers.php">占卜师</a></li>
-                    <li><a href="<?php echo SITE_URL; ?>/courses.php">西玄课程</a></li>
+                    <li><a href="<?php echo SITE_URL; ?>/courses.php">玄学课程</a></li>
                     <li><a href="<?php echo SITE_URL; ?>/products.php">魔法产品</a></li>
                     <li><a href="<?php echo SITE_URL; ?>/about.php">关于我们</a></li>
                     <li><a href="<?php echo SITE_URL; ?>/contact.php">联系我们</a></li>
@@ -48,7 +48,7 @@ if (!defined('SITE_URL')) {
                     <?php elseif (isReaderLoggedIn()): ?>
                         <?php $currentReader = getReaderById($_SESSION['reader_id']); ?>
                         <li class="mobile-only mobile-user">
-                            <a href="<?php echo SITE_URL; ?>/reader/dashboard.php" class="mobile-user-name reader-name-gold"><?php echo h($currentReader['full_name']); ?></a>
+                            <a href="<?php echo SITE_URL; ?>/reader/dashboard.php" class="mobile-user-name"><?php echo h($currentReader['full_name']); ?></a>
                         </li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/reader/dashboard.php">占卜师后台</a></li>
                         <li class="mobile-only"><a href="<?php echo SITE_URL; ?>/auth/logout.php">退出登录</a></li>
@@ -103,7 +103,7 @@ if (!defined('SITE_URL')) {
                     ?>
                     <div class="user-dropdown" id="readerDropdown">
                         <button class="user-toggle" data-user-center="<?php echo SITE_URL; ?>/reader/dashboard.php">
-                            <span class="user-name reader-name-gold"><?php echo h($currentReader['full_name']); ?></span>
+                            <span class="user-name"><?php echo h($currentReader['full_name']); ?></span>
                             <?php
                             // 显示未读消息数量
                             try {

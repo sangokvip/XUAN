@@ -120,10 +120,10 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
             
             <!-- 资料完整性提醒 -->
             <?php if ($completenessScore < 100): ?>
-                <div class="alert alert-warning">
+                <div class="profile-completion-alert">
                     <h3>完善您的资料</h3>
-                    <p>您的资料完整度为 <strong><?php echo round($completenessScore); ?>%</strong>，完善资料可以获得更多用户关注。</p>
-                    <ul>
+                    <p>您的资料完整度为 <span class="profile-completion-score"><?php echo round($completenessScore); ?>%</span>，完善资料可以获得更多用户关注。</p>
+                    <ul class="profile-completion-list">
                         <?php if (!$profileCompleteness['basic_info']): ?>
                             <li><a href="profile.php">完善基本信息和个人简介</a></li>
                         <?php endif; ?>
@@ -246,27 +246,35 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
             <div class="card">
                 <div class="card-header">
                     <h2>个人信息概览</h2>
-                    <div class="card-header-actions">
-                        <a href="../reader.php?id=<?php echo $_SESSION['reader_id']; ?>"
-                           class="btn btn-primary" target="_blank">
-                            <span class="btn-icon">🔍</span>
-                            查看我的页面
-                        </a>
-                        <a href="profile.php" class="btn btn-secondary">编辑资料</a>
-                    </div>
+                    <a href="profile.php" class="btn btn-secondary">编辑资料</a>
                 </div>
                 <div class="card-body">
                     <div class="profile-overview">
                         <?php if (!empty($reader['photo'])): ?>
                             <div class="profile-photo">
                                 <?php
-                                // 确保路径正确：如果路径不以../开头，则添加../
+                                // 获取优化后的图片URL
                                 $photoPath = $reader['photo'];
-                                if (!str_starts_with($photoPath, '../')) {
-                                    $photoPath = '../' . $photoPath;
+                                $displayPath = '../' . $photoPath;
+
+                                // 尝试使用优化后的图片
+                                $optimizedImageUrl = null;
+                                try {
+                                    require_once '../includes/ImageOptimizer.php';
+                                    $optimizer = new ImageOptimizer('../' . PHOTO_PATH);
+                                    $fileName = basename($photoPath);
+                                    $optimizedImageUrl = $optimizer->getOptimizedImageUrl($fileName, 'small', true);
+                                    // 转换为相对于当前页面的路径
+                                    if ($optimizedImageUrl && !str_starts_with($optimizedImageUrl, '../')) {
+                                        $optimizedImageUrl = '../' . $optimizedImageUrl;
+                                    }
+                                } catch (Exception $e) {
+                                    // 如果优化功能不可用，使用原图
                                 }
+
+                                $finalImagePath = $optimizedImageUrl && file_exists($optimizedImageUrl) ? $optimizedImageUrl : $displayPath;
                                 ?>
-                                <img src="<?php echo h($photoPath); ?>" alt="个人照片">
+                                <img src="<?php echo h($finalImagePath); ?>" alt="个人照片">
                             </div>
                         <?php endif; ?>
                         
@@ -380,7 +388,7 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
             checkinBtn.textContent = '签到中...';
 
             try {
-                console.log('开始签到请求...');
+
                 const response = await fetch('../api/checkin.php', {
                     method: 'POST',
                     headers: {
@@ -388,18 +396,17 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
                     }
                 });
 
-                console.log('签到响应状态:', response.status);
-                console.log('签到响应头:', response.headers);
+
 
                 const responseText = await response.text();
-                console.log('签到响应原始内容:', responseText);
+
 
                 let result;
                 try {
                     result = JSON.parse(responseText);
-                    console.log('签到解析结果:', result);
+
                 } catch (parseError) {
-                    console.error('JSON解析失败:', parseError);
+
                     throw new Error('服务器返回了无效的JSON: ' + responseText.substring(0, 100));
                 }
 
@@ -427,7 +434,7 @@ $completenessScore = array_sum($profileCompleteness) / count($profileCompletenes
                     showNotification(result.message, 'error');
                 }
             } catch (error) {
-                console.error('签到请求失败:', error);
+
                 checkinBtn.textContent = originalText;
                 checkinBtn.disabled = false;
                 showNotification('签到失败：' + error.message, 'error');

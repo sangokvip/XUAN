@@ -96,6 +96,7 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索占卜师';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo h($pageTitle); ?> - <?php echo getSiteName(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/image-optimization.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -134,10 +135,24 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索占卜师';
                     <?php foreach ($readers as $reader): ?>
                         <div class="reader-card">
                             <?php
-                            $photoSrc = getReaderPhotoUrl($reader, true);
+                            $photoSrc = '';
+                            if (!empty($reader['photo_circle'])) {
+                                $photoSrc = $reader['photo_circle'];
+                                // 清理路径格式
+                                $photoSrc = str_replace('../', '', $photoSrc);
+                                $photoSrc = ltrim($photoSrc, '/');
+                            } elseif (!empty($reader['photo'])) {
+                                $photoSrc = $reader['photo'];
+                                // 清理路径格式
+                                $photoSrc = str_replace('../', '', $photoSrc);
+                                $photoSrc = ltrim($photoSrc, '/');
+                            } else {
+                                // 使用新的默认头像系统
+                                require_once 'includes/AvatarHelper.php';
+                                $photoSrc = AvatarHelper::getDefaultAvatar($reader['gender'], $reader['id']);
+                            }
                             ?>
-                            ?>
-                            <img src="<?php echo h($photoSrc); ?>"
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="<?php echo h($photoSrc); ?>" class="lazy-image"
                                  alt="<?php echo h($reader['full_name']); ?>"
                                  class="reader-avatar">
 
@@ -444,5 +459,7 @@ $pageTitle = !empty($query) ? "搜索：{$query}" : '搜索占卜师';
             }
         }
     </style>
+    <!-- 图片懒加载 -->
+    <script src="assets/js/lazy-loading.js"></script>
 </body>
 </html>

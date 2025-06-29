@@ -274,8 +274,16 @@ $pageTitle = '消息通知';
         <?php include '../includes/reader_mobile_nav.php'; ?>
     </div>
 
+    <!-- 移动端菜单按钮 -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+        <span id="menuIcon">☰</span>
+    </button>
+    
+    <!-- 移动端侧栏覆盖层 -->
+    <div class="mobile-sidebar-overlay" id="mobileSidebarOverlay"></div>
+    
     <div class="reader-container">
-        <div class="reader-sidebar">
+        <div class="reader-sidebar" id="readerSidebar">
             <div class="reader-sidebar-header">
                 <h3>占卜师后台</h3>
             </div>
@@ -362,5 +370,6 @@ $pageTitle = '消息通知';
             <p>&copy; 2024 塔罗师展示平台. 保留所有权利.</p>
         </div>
     </footer>
+    <script src="../assets/js/reader-mobile-menu.js"></script>
 </body>
 </html>

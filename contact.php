@@ -6,17 +6,6 @@ $success = '';
 $errors = [];
 $db = Database::getInstance();
 
-// 获取联系方式设置
-function getContactSetting($key, $default = '') {
-    global $db;
-    try {
-        $setting = $db->fetchOne("SELECT setting_value FROM settings WHERE setting_key = ?", [$key]);
-        return $setting ? $setting['setting_value'] : $default;
-    } catch (Exception $e) {
-        return $default;
-    }
-}
-
 // 处理联系表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name'] ?? '');
@@ -44,29 +33,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             // 保存留言到数据库
-            $db->query(
-                "INSERT INTO contact_messages (name, email, subject, message, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
-                [
-                    $name,
-                    $email,
-                    $subject,
-                    $message,
-                    $_SERVER['REMOTE_ADDR'] ?? '',
-                    $_SERVER['HTTP_USER_AGENT'] ?? ''
-                ]
-            );
+            $stmt = $db->prepare("
+                INSERT INTO contact_messages (name, email, subject, message, ip_address, user_agent)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
 
-            $success = '感谢您的留言！我们会尽快回复您。';
+            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-            // 清空表单
-            $name = $email = $subject = $message = '';
+            $result = $stmt->execute([$name, $email, $subject, $message, $ipAddress, $userAgent]);
 
+            if ($result) {
+                $success = '感谢您的留言！我们会在24小时内回复您。';
+                // 清空表单
+                $name = $email = $subject = $message = '';
+            } else {
+                $errors[] = '留言发送失败，请稍后重试';
+            }
         } catch (Exception $e) {
-            $errors[] = '提交失败，请稍后重试。';
-            error_log("Contact form submission error: " . $e->getMessage());
+            $errors[] = '系统错误，请稍后重试';
+            error_log('Contact form error: ' . $e->getMessage());
         }
     }
 }
+
+// 获取联系方式设置
+$contactSettings = [
+    'email_1' => getSetting('contact_email_1', 'info@example.com'),
+    'email_2' => getSetting('contact_email_2', 'support@example.com'),
+    'wechat' => getSetting('contact_wechat', 'mystical_service'),
+    'wechat_hours' => getSetting('contact_wechat_hours', '9:00-21:00'),
+    'qq_group_1' => getSetting('contact_qq_group_1', '123456789'),
+    'qq_group_2' => getSetting('contact_qq_group_2', '987654321'),
+    'xiaohongshu' => getSetting('contact_xiaohongshu', '@神秘学园'),
+    'xiaohongshu_desc' => getSetting('contact_xiaohongshu_desc', '每日分享占卜知识'),
+    'phone' => getSetting('contact_phone', ''),
+    'address' => getSetting('contact_address', ''),
+    'business_hours' => getSetting('contact_business_hours', '周一至周日 9:00-21:00'),
+    'notice' => getSetting('contact_notice', '我们会在24小时内回复您的留言')
+];
 ?>
 
 <!DOCTYPE html>
@@ -95,30 +100,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="contact-card">
                             <div class="contact-icon">📧</div>
                             <h3>邮箱联系</h3>
-                            <p><?php echo h(getContactSetting('contact_email_primary', 'info@example.com')); ?></p>
-                            <p><?php echo h(getContactSetting('contact_email_support', 'support@example.com')); ?></p>
+                            <p><?php echo h($contactSettings['email_1']); ?></p>
+                            <p><?php echo h($contactSettings['email_2']); ?></p>
                         </div>
 
                         <div class="contact-card">
                             <div class="contact-icon">💬</div>
                             <h3>微信客服</h3>
-                            <p>微信号：<?php echo h(getContactSetting('contact_wechat_id', 'mystical_service')); ?></p>
-                            <p>工作时间：<?php echo h(getContactSetting('contact_wechat_hours', '9:00-21:00')); ?></p>
+                            <p>微信号：<?php echo h($contactSettings['wechat']); ?></p>
+                            <p>工作时间：<?php echo h($contactSettings['wechat_hours']); ?></p>
                         </div>
 
                         <div class="contact-card">
                             <div class="contact-icon">📱</div>
                             <h3>QQ群</h3>
-                            <p>官方交流群：<?php echo h(getContactSetting('contact_qq_main', '123456789')); ?></p>
-                            <p>新手学习群：<?php echo h(getContactSetting('contact_qq_newbie', '987654321')); ?></p>
+                            <p>官方交流群：<?php echo h($contactSettings['qq_group_1']); ?></p>
+                            <p>新手学习群：<?php echo h($contactSettings['qq_group_2']); ?></p>
                         </div>
 
                         <div class="contact-card">
                             <div class="contact-icon">📍</div>
                             <h3>小红书</h3>
-                            <p><?php echo h(getContactSetting('contact_xiaohongshu', '@神秘学园')); ?></p>
-                            <p><?php echo h(getContactSetting('contact_xiaohongshu_desc', '每日分享占卜知识')); ?></p>
+                            <p><?php echo h($contactSettings['xiaohongshu']); ?></p>
+                            <p><?php echo h($contactSettings['xiaohongshu_desc']); ?></p>
                         </div>
+
+                        <?php if (!empty($contactSettings['phone'])): ?>
+                        <div class="contact-card">
+                            <div class="contact-icon">📞</div>
+                            <h3>电话联系</h3>
+                            <p><?php echo h($contactSettings['phone']); ?></p>
+                            <p><?php echo h($contactSettings['business_hours']); ?></p>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($contactSettings['address'])): ?>
+                        <div class="contact-card">
+                            <div class="contact-icon">🏢</div>
+                            <h3>联系地址</h3>
+                            <p><?php echo h($contactSettings['address']); ?></p>
+                            <p><?php echo h($contactSettings['business_hours']); ?></p>
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 
@@ -138,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if ($success): ?>
                         <div class="alert alert-success">
                             <?php echo h($success); ?>
+                            <br><small><?php echo h($contactSettings['notice']); ?></small>
                         </div>
                     <?php endif; ?>
                     

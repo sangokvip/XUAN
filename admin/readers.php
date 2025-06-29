@@ -1,10 +1,13 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/functions.php';
 require_once '../includes/DivinationTagHelper.php';
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
+
+
 
 $db = Database::getInstance();
 $success = '';
@@ -38,12 +41,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$readerId]);
         if ($reader) {
             // 删除相关文件
-            $filesToDelete = [];
-            if (!empty($reader['photo']) && file_exists('../' . $reader['photo'])) {
-                $filesToDelete[] = '../' . $reader['photo'];
+            if (!empty($reader['photo'])) {
+                $photoPath = '../' . $reader['photo'];
+                $realPath = realpath($photoPath);
+                $realBaseDir = realpath('../');
+                if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($photoPath)) {
+                    unlink($photoPath);
+                }
             }
-            if (!empty($reader['price_list_image']) && file_exists('../' . $reader['price_list_image'])) {
-                $filesToDelete[] = '../' . $reader['price_list_image'];
+            if (!empty($reader['price_list_image'])) {
+                $priceListPath = '../' . $reader['price_list_image'];
+                $realPath = realpath($priceListPath);
+                $realBaseDir = realpath('../');
+                if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($priceListPath)) {
+                    unlink($priceListPath);
+                }
             }
 
             // 删除证书文件
@@ -51,8 +63,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $certificates = json_decode($reader['certificates'], true);
                 if (is_array($certificates)) {
                     foreach ($certificates as $cert) {
-                        if (file_exists('../' . $cert)) {
-                            $filesToDelete[] = '../' . $cert;
+                        $certPath = '../' . $cert;
+                        $realPath = realpath($certPath);
+                        $realBaseDir = realpath('../');
+                        if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($certPath)) {
+                            unlink($certPath);
                         }
                     }
                 }
@@ -60,13 +75,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // 删除数据库记录
             $db->delete('readers', 'id = ?', [$readerId]);
-
-            // 删除文件
-            foreach ($filesToDelete as $file) {
-                if (file_exists($file)) {
-                    unlink($file);
-                }
-            }
 
             $success = '占卜师已删除';
         }
@@ -83,12 +91,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $reader = $db->fetchOne("SELECT * FROM readers WHERE id = ?", [$id]);
                 if ($reader) {
                     // 删除相关文件
-                    $filesToDelete = [];
-                    if (!empty($reader['photo']) && file_exists('../' . $reader['photo'])) {
-                        $filesToDelete[] = '../' . $reader['photo'];
+                    if (!empty($reader['photo'])) {
+                        $photoPath = '../' . $reader['photo'];
+                        $realPath = realpath($photoPath);
+                        $realBaseDir = realpath('../');
+                        if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($photoPath)) {
+                            unlink($photoPath);
+                        }
                     }
-                    if (!empty($reader['price_list_image']) && file_exists('../' . $reader['price_list_image'])) {
-                        $filesToDelete[] = '../' . $reader['price_list_image'];
+                    if (!empty($reader['price_list_image'])) {
+                        $priceListPath = '../' . $reader['price_list_image'];
+                        $realPath = realpath($priceListPath);
+                        $realBaseDir = realpath('../');
+                        if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($priceListPath)) {
+                            unlink($priceListPath);
+                        }
                     }
 
                     // 删除证书文件
@@ -96,8 +113,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $certificates = json_decode($reader['certificates'], true);
                         if (is_array($certificates)) {
                             foreach ($certificates as $cert) {
-                                if (file_exists('../' . $cert)) {
-                                    $filesToDelete[] = '../' . $cert;
+                                $certPath = '../' . $cert;
+                                $realPath = realpath($certPath);
+                                $realBaseDir = realpath('../');
+                                if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($certPath)) {
+                                    unlink($certPath);
                                 }
                             }
                         }
@@ -105,13 +125,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // 删除数据库记录
                     $db->delete('readers', 'id = ?', [$id]);
-
-                    // 删除文件
-                    foreach ($filesToDelete as $file) {
-                        if (file_exists($file)) {
-                            unlink($file);
-                        }
-                    }
 
                     $deletedCount++;
                 }

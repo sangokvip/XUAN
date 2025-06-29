@@ -403,7 +403,15 @@ $pageTitle = '浏览记录';
                 <?php foreach ($browseHistory as $history): ?>
                     <div class="history-item">
                         <?php
-                        $photoSrc = getReaderPhotoUrl($history, true, '../');
+                        $photoSrc = '';
+                        if (!empty($history['photo_circle'])) {
+                            $photoSrc = '../' . $history['photo_circle'];
+                        } elseif (!empty($history['photo'])) {
+                            $photoSrc = '../' . $history['photo'];
+                        } else {
+                            // 根据性别使用默认头像
+                            $photoSrc = ($history['gender'] === 'female') ? '../img/tf.jpg' : '../img/tm.jpg';
+                        }
                         ?>
                         <img src="<?php echo h($photoSrc); ?>"
                              alt="<?php echo h($history['full_name']); ?>"

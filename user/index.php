@@ -424,7 +424,14 @@ $pageTitle = '用户中心';
         <div class="user-header">
             <div class="user-info">
                 <?php
-                $avatarPath = getUserAvatarUrl($user, '../');
+                $avatarPath = '';
+                if (!empty($user['avatar'])) {
+                    // 如果用户有自定义头像
+                    $avatarPath = '../' . $user['avatar'];
+                } else {
+                    // 使用默认头像
+                    $avatarPath = ($user['gender'] === 'female') ? '../img/nf.jpg' : '../img/nm.jpg';
+                }
                 ?>
                 <img src="<?php echo h($avatarPath); ?>"
                      alt="用户头像" class="user-avatar"
@@ -569,12 +576,20 @@ $pageTitle = '用户中心';
                     <?php foreach ($recentBrowseHistory as $history): ?>
                         <div class="list-item">
                             <?php
-                            $readerAvatar = getReaderPhotoUrl($history, true, '../');
+                            $readerAvatar = '';
+                            if (!empty($history['photo_circle'])) {
+                                $readerAvatar = '../' . $history['photo_circle'];
+                            } elseif (!empty($history['photo'])) {
+                                $readerAvatar = '../' . $history['photo'];
+                            } else {
+                                // 根据性别使用默认头像
+                                $readerAvatar = ($history['gender'] === 'female') ? '../img/tf.jpg' : '../img/tm.jpg';
+                            }
                             ?>
                             <img src="<?php echo h($readerAvatar); ?>"
                                  alt="<?php echo h($history['full_name']); ?>"
                                  class="list-avatar"
-                                 onerror="this.src='<?php echo ($history['gender'] === 'female') ? '../img/f1.jpg' : '../img/m1.jpg'; ?>'">
+                                 onerror="this.src='../img/tm.jpg'">
                             <div class="list-content">
                                 <div class="list-title">
                                     <?php echo h($history['full_name']); ?>

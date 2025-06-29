@@ -223,26 +223,6 @@
     padding: 20px 25px;
     font-weight: 600;
     font-size: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.card-header h2 {
-    margin: 0;
-    flex: 1;
-}
-
-.card-header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.card-header-actions .btn {
-    padding: 8px 16px;
-    font-size: 13px;
-    white-space: nowrap;
 }
 
 .card-body {
@@ -631,28 +611,6 @@
     }
 
     /* 调整卡片 */
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 15px 20px;
-    }
-
-    .card-header h2 {
-        margin-bottom: 0;
-    }
-
-    .card-header-actions {
-        width: 100%;
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-
-    .card-header-actions .btn {
-        padding: 8px 14px;
-        font-size: 12px;
-    }
-
     .card-body {
         padding: 20px;
     }
@@ -719,16 +677,6 @@
 
     .mobile-nav-item .text {
         font-size: 10px;
-    }
-
-    .card-header {
-        padding: 12px 15px;
-        font-size: 13px;
-    }
-
-    .card-header-actions .btn {
-        padding: 6px 10px;
-        font-size: 11px;
     }
 
     .card-body {

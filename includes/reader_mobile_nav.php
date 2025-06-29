@@ -22,11 +22,10 @@ $navItems = [
         'active' => $currentPage === 'profile.php'
     ],
     [
-        'url' => '../reader.php?id=' . $_SESSION['reader_id'],
-        'icon' => '🔍',
-        'text' => '我的页面',
-        'active' => false,
-        'target' => '_blank'
+        'url' => 'certificates.php',
+        'icon' => '🏆',
+        'text' => '证书',
+        'active' => $currentPage === 'certificates.php'
     ],
     [
         'url' => 'view_records.php',
@@ -76,8 +75,7 @@ $navItems = [
 <div class="mobile-nav-grid">
     <?php foreach ($navItems as $item): ?>
         <a href="<?php echo h($item['url']); ?>"
-           class="mobile-nav-item <?php echo $item['active'] ? 'active' : ''; ?>"
-           <?php echo isset($item['target']) ? 'target="' . h($item['target']) . '"' : ''; ?>>
+           class="mobile-nav-item <?php echo $item['active'] ? 'active' : ''; ?>">
             <span class="icon"><?php echo $item['icon']; ?></span>
             <span class="text"><?php echo h($item['text']); ?></span>
         </a>

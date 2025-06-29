@@ -4,7 +4,7 @@ require_once '../config/config.php';
 require_once '../includes/TataCoinManager.php';
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
 
 $db = Database::getInstance();
 $tataCoinManager = new TataCoinManager();
@@ -170,7 +170,21 @@ $pageTitle = 'Tata Coin管理';
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
-        /* Tata Coin 管理页面特定样式 */
+        
+        .page-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
         
         .stats-grid {
             display: grid;
@@ -343,10 +357,7 @@ $pageTitle = 'Tata Coin管理';
         </div>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>💰 Tata Coin管理</h1>
-                <p>管理网站的虚拟货币系统</p>
-            </div>
+            <h1>💰 Tata Coin管理</h1>
         
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
@@ -364,16 +375,7 @@ $pageTitle = 'Tata Coin管理';
             </div>
         <?php endif; ?>
 
-        <!-- 调试信息 -->
-        <?php if (isset($_GET['debug'])): ?>
-            <div class="alert" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;">
-                <h4>调试信息：</h4>
-                <p><strong>当前设置：</strong></p>
-                <pre><?php print_r($settings); ?></pre>
-                <p><strong>POST数据：</strong></p>
-                <pre><?php print_r($_POST); ?></pre>
-            </div>
-        <?php endif; ?>
+
         
         <!-- 统计数据 -->
         <div class="stats-grid">

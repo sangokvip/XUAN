@@ -82,13 +82,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/admin/image_optimizer.php"
-               class="<?php echo $current_page === 'image_optimizer.php' ? 'active' : ''; ?>">
-                <span class="icon">🖼️</span>
-                图片优化管理
-            </a>
-        </li>
-        <li>
             <a href="<?php echo SITE_URL; ?>/admin/database_update.php"
                class="<?php echo $current_page === 'database_update.php' ? 'active' : ''; ?>">
                 <span class="icon">🔧</span>

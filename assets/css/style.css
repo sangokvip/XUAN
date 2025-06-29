@@ -101,8 +101,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    min-height: 50px;
+    padding: 15px 0;
+    min-height: 60px;
 }
 
 /* Logo 区域 */
@@ -122,10 +122,20 @@ body {
 .logo a {
     text-decoration: none;
     transition: opacity 0.3s ease;
+    display: block;
 }
 
 .logo a:hover {
     opacity: 0.9;
+}
+
+/* Logo 图片样式 */
+.logo-image {
+    height: 50px;
+    width: auto;
+    max-width: 250px;
+    object-fit: contain;
+    transition: opacity 0.3s ease;
 }
 
 /* 主导航 */
@@ -152,7 +162,7 @@ body {
     color: #fff;
     text-decoration: none;
     font-weight: 500;
-    font-size: 15px;
+    font-size: 16px;
     padding: 8px 0;
     transition: all 0.3s ease;
     position: relative;
@@ -518,16 +528,6 @@ body {
 
 .user-name:hover {
     color: #d4af37;
-}
-
-/* 占卜师用户名金色样式 */
-.reader-name-gold {
-    color: #d4af37 !important;
-    font-weight: 600 !important;
-}
-
-.reader-name-gold:hover {
-    color: #ffd700 !important;
 }
 
 /* 下拉菜单动画 */
@@ -1944,8 +1944,9 @@ main {
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
-        padding: 10px 0;
+        padding: 12px 0;
         gap: 0;
+        min-height: 50px;
     }
 
     /* 移动端隐藏桌面端操作区域 */
@@ -1966,6 +1967,12 @@ main {
         font-size: 20px;
         text-align: left;
         margin: 0;
+    }
+
+    /* 移动端Logo图片样式 */
+    .logo-image {
+        height: 38px;
+        max-width: 180px;
     }
 
     /* 显示移动端菜单按钮 */
@@ -2007,7 +2014,7 @@ main {
     .main-nav a {
         display: block;
         padding: 18px 25px;
-        font-size: 16px;
+        font-size: 17px;
         color: #fff;
         border-bottom: none;
         transition: all 0.3s ease;
@@ -2029,8 +2036,6 @@ main {
         background: rgba(212, 175, 55, 0.3);
         margin: 15px 20px;
     }
-
-
 
     .mobile-user {
         padding: 15px 20px;
@@ -2183,6 +2188,25 @@ main {
         flex-wrap: wrap;
         gap: 5px;
     }
+}
+
+/* 小屏幕优化 (480px以下) */
+@media (max-width: 480px) {
+    .header-content {
+        padding: 10px 0;
+        min-height: 45px;
+    }
+
+    .logo-image {
+        height: 34px;
+        max-width: 160px;
+    }
+
+    .main-nav a {
+        font-size: 16px;
+        padding: 16px 20px;
+    }
+
 }
 
 @media (max-width: 480px) {

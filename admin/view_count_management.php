@@ -51,7 +51,11 @@ $allReaders = $db->fetchAll("SELECT id, full_name, view_count FROM readers WHERE
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
-        /* 查看次数管理页面特定样式 */
+        .management-container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
         
         .section {
             background: white;

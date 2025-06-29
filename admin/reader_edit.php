@@ -1,10 +1,13 @@
 <?php
 session_start();
 require_once '../config/config.php';
+require_once '../includes/functions.php';
 require_once '../includes/DivinationConfig.php';
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
+
+
 
 $db = Database::getInstance();
 $success = '';
@@ -176,8 +179,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 chmod($targetPath, 0644);
                 
                 // 删除旧头像
-                if (!empty($reader['photo']) && file_exists('../' . $reader['photo'])) {
-                    unlink('../' . $reader['photo']);
+                if (!empty($reader['photo'])) {
+                    $oldPhotoPath = '../' . $reader['photo'];
+                    $realPath = realpath($oldPhotoPath);
+                    $realBaseDir = realpath('../');
+                    if ($realPath && $realBaseDir && strpos($realPath, $realBaseDir) === 0 && file_exists($oldPhotoPath)) {
+                        unlink($oldPhotoPath);
+                    }
                 }
                 
                 // 保存相对路径到数据库（相对于网站根目录）

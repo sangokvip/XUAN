@@ -3,7 +3,7 @@ session_start();
 require_once '../config/config.php';
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
 
 $db = Database::getInstance();
 $message = '';

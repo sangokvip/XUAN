@@ -134,6 +134,8 @@ function registerUser($data, $inviteToken = null) {
         $errors[] = '用户名不能为空';
     } elseif (strlen($data['username']) < 3) {
         $errors[] = '用户名至少3个字符';
+    } elseif (!preg_match('/^[a-zA-Z0-9_]+$/', $data['username'])) {
+        $errors[] = '用户名只能包含英文字母、数字和下划线';
     }
     
     if (empty($data['email']) || !isValidEmail($data['email'])) {
@@ -303,9 +305,7 @@ function registerReader($data, $token = null, $inviteToken = null) {
         // 如果没有上传照片，根据性别设置默认头像
         $photo = $data['photo'] ?? null;
         if (empty($photo)) {
-            // 使用新的默认头像系统（m1-m4或f1-f4）
-            $avatarNum = rand(1, 4);
-            $photo = $data['gender'] === 'male' ? "img/m{$avatarNum}.jpg" : "img/f{$avatarNum}.jpg";
+            $photo = $data['gender'] === 'male' ? 'img/tm.jpg' : 'img/tf.jpg';
         }
 
         // 处理占卜类型数据
@@ -390,8 +390,11 @@ function requireLogin($redirectTo = 'auth/login.php') {
 /**
  * 要求塔罗师登录
  */
-function requireReaderLogin($redirectTo = 'auth/reader_login.php') {
+function requireReaderLogin($redirectTo = null) {
     if (!isReaderLoggedIn()) {
+        if ($redirectTo === null) {
+            $redirectTo = SITE_URL . '/auth/reader_login.php';
+        }
         redirect($redirectTo);
     }
 }
@@ -399,8 +402,11 @@ function requireReaderLogin($redirectTo = 'auth/reader_login.php') {
 /**
  * 要求管理员登录
  */
-function requireAdminLogin($redirectTo = 'auth/admin_login.php') {
+function requireAdminLogin($redirectTo = null) {
     if (!isAdminLoggedIn()) {
+        if ($redirectTo === null) {
+            $redirectTo = SITE_URL . '/auth/admin_login.php';
+        }
         redirect($redirectTo);
     }
 }

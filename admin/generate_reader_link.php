@@ -10,7 +10,7 @@ if (function_exists('getSetting')) {
 }
 
 // 检查管理员权限
-requireAdminLogin('../auth/admin_login.php');
+requireAdminLogin();
 
 $success = '';
 $error = '';

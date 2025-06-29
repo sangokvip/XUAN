@@ -330,146 +330,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             text-align: center;
         }
 
-        /* 占卜师登录卡片样式 */
-        .reader-login-card {
-            background: rgba(212, 175, 55, 0.15);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 2px solid rgba(212, 175, 55, 0.3);
-            border-radius: 20px;
-            padding: 32px 24px;
-            margin-top: 24px;
+        /* 登录类型选择器 */
+        .login-type-selector {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 6px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 280px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .login-type-option {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
             text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 15px;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .reader-login-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(212, 175, 55, 0.1),
-                transparent);
-            transition: left 0.8s ease;
-        }
-
-        .reader-login-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(212, 175, 55, 0.5);
-            box-shadow: 0 16px 32px rgba(212, 175, 55, 0.2);
-        }
-
-        .reader-login-card:hover::before {
-            left: 100%;
-        }
-
-        .reader-icon {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 16px;
-            background: linear-gradient(135deg, #d4af37, #f4c430);
-            border-radius: 50%;
+            white-space: nowrap;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
         }
 
-        .crystal-ball {
-            font-size: 28px;
-            animation: float 3s ease-in-out infinite;
+        .login-type-option.active {
+            background: linear-gradient(135deg, #9333ea, #7c3aed);
+            color: white;
+            box-shadow: 0 4px 15px rgba(147, 51, 234, 0.3);
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
+        .login-type-option:not(.active) {
+            color: rgba(255, 255, 255, 0.6);
         }
 
-        .reader-title {
-            color: #f4c430;
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            text-shadow: 0 0 20px rgba(244, 196, 48, 0.3);
-        }
-
-        .reader-subtitle {
+        .login-type-option:not(.active):hover {
+            background: rgba(255, 255, 255, 0.08);
             color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
-            margin-bottom: 20px;
-            line-height: 1.4;
         }
 
-        .reader-login-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #d4af37, #f4c430);
-            color: #1a1a1a;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .reader-login-btn::before {
+        .login-type-option::before {
             content: '';
             position: absolute;
             top: 0;
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg,
-                transparent,
-                rgba(255, 255, 255, 0.3),
-                transparent);
-            transition: left 0.5s ease;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
         }
 
-        .reader-login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(212, 175, 55, 0.4);
-        }
-
-        .reader-login-btn:hover::before {
+        .login-type-option:hover::before {
             left: 100%;
         }
 
-        .reader-login-btn:hover .btn-arrow {
-            transform: translateX(4px);
+        .login-type-icon {
+            margin-right: 8px;
+            font-size: 16px;
         }
 
-        .btn-icon {
-            font-size: 18px;
-            animation: sparkle 2s ease-in-out infinite;
+        /* 占卜师登录特殊样式 */
+        .reader-login-highlight {
+            background: linear-gradient(135deg, #d4af37, #f1c40f) !important;
+            color: #000 !important;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.4) !important;
         }
 
-        .btn-arrow {
-            font-size: 18px;
-            font-weight: bold;
-            transition: transform 0.3s ease;
-        }
-
-        @keyframes sparkle {
-            0%, 100% {
-                transform: scale(1) rotate(0deg);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.2) rotate(180deg);
-                opacity: 0.8;
-            }
+        .reader-login-highlight:hover {
+            background: linear-gradient(135deg, #f1c40f, #d4af37) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(212, 175, 55, 0.5) !important;
         }
 
         /* 响应式设计 */
@@ -490,37 +430,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 font-size: 14px;
             }
 
-            .reader-login-card {
-                padding: 24px 20px;
-                margin-top: 20px;
+            .login-type-option {
+                padding: 10px 16px;
+                font-size: 14px;
             }
 
-            .reader-icon {
-                width: 50px;
-                height: 50px;
-                margin-bottom: 12px;
-            }
-
-            .crystal-ball {
-                font-size: 24px;
-            }
-
-            .reader-title {
-                font-size: 18px;
-            }
-
-            .reader-subtitle {
-                font-size: 13px;
-                margin-bottom: 16px;
-            }
-
-            .reader-login-btn {
-                padding: 12px 24px;
-                font-size: 15px;
-            }
-
-            .btn-icon, .btn-arrow {
-                font-size: 16px;
+            .login-type-icon {
+                margin-right: 6px;
+                font-size: 14px;
             }
         }
     </style>
@@ -530,7 +447,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="auth-card">
             <div class="star-icon"></div>
 
-            <h1 class="auth-title">登录</h1>
+            <!-- 登录类型选择器 -->
+            <div class="login-type-selector">
+                <div class="login-type-option active">
+                    <span class="login-type-icon">👤</span>
+                    用户登录
+                </div>
+                <a href="reader_login.php" class="login-type-option reader-login-highlight">
+                    <span class="login-type-icon">🔮</span>
+                    占卜师登录
+                </a>
+            </div>
+
+            <h1 class="auth-title">用户登录</h1>
 
             <?php if ($error): ?>
                 <div class="error-message"><?php echo h($error); ?></div>
@@ -570,21 +499,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <a href="forgot_password.php?type=user" class="auth-link">忘记密码？</a><br>
                 <a href="../index.php" class="auth-link">返回首页</a>
             </div>
-        </div>
-
-        <!-- 占卜师登录卡片 -->
-        <div class="reader-login-card">
-            <div class="reader-icon">
-                <span class="crystal-ball">🔮</span>
-            </div>
-            <h3 class="reader-title">占卜师专属入口</h3>
-            <p class="reader-subtitle">为占卜师提供专业的后台管理</p>
-            <a href="reader_login.php" class="reader-login-btn">
-                <span class="btn-icon">✨</span>
-                占卜师登录
-                <span class="btn-arrow">→</span>
-            </a>
-        </div>
         </div>
     </div>
 </body>

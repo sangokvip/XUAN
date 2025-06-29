@@ -33,31 +33,30 @@ $paymentSuccess = '';
 
 // 检查登录状态
 $isReader = false;
-$currentReader = null;
-
 if (isset($_SESSION['admin_id'])) {
     $isAdmin = true;
     $canViewContact = true;
     $hasViewedContact = true; // 管理员默认已查看
 } elseif (isset($_SESSION['reader_id'])) {
-    // 占卜师登录状态
+    // 占卜师已登录
     $isReader = true;
-    $currentReader = getReaderById($_SESSION['reader_id']);
+    $canViewContact = true;
 
-    // 占卜师只能免费查看自己的联系方式，查看其他占卜师需要付费
+    // 检查是否是查看自己的页面
     if ($_SESSION['reader_id'] == $readerId) {
-        $canViewContact = true;
-        $hasViewedContact = true; // 可以查看自己的联系方式
+        // 查看自己的页面，免费显示联系方式
+        $hasViewedContact = true;
     } else {
-        $canViewContact = true;
-        // 检查是否已经付费查看过其他占卜师
+        // 查看其他占卜师页面，需要付费（像普通用户一样）
         $db = Database::getInstance();
         $existingRecord = $db->fetchOne(
-            "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid' AND user_type = 'reader'",
+            "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid'",
             [$_SESSION['reader_id'], $readerId]
         );
         $hasViewedContact = (bool)$existingRecord;
-        $contactCost = $reader['is_featured'] ? 30 : 10;
+
+        // 确定查看联系方式的费用
+        $contactCost = $reader['is_featured'] ? 30 : 10; // 推荐占卜师30，普通占卜师10
         $userTataCoinBalance = $tataCoinManager->getBalance($_SESSION['reader_id'], 'reader');
     }
 } elseif (isset($_SESSION['user_id'])) {
@@ -68,7 +67,7 @@ if (isset($_SESSION['admin_id'])) {
     // 检查是否已经付费查看过
     $db = Database::getInstance();
     $existingRecord = $db->fetchOne(
-        "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid' AND user_type = 'user'",
+        "SELECT * FROM user_browse_history WHERE user_id = ? AND reader_id = ? AND browse_type = 'paid'",
         [$_SESSION['user_id'], $readerId]
     );
     $hasViewedContact = (bool)$existingRecord;
@@ -79,39 +78,16 @@ if (isset($_SESSION['admin_id'])) {
 
 // 处理查看联系方式请求
 $showContact = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $canViewContact) {
-    if ($isAdmin) {
-        // 管理员直接显示联系方式，不记录查看记录
-        $showContact = true;
-    } elseif ($isReader) {
-        // 占卜师查看联系方式逻辑
-        if ($_SESSION['reader_id'] == $readerId) {
-            // 查看自己的联系方式，直接显示
-            $showContact = true;
-        } elseif ($hasViewedContact) {
-            // 已经付费查看过其他占卜师，直接显示
-            $showContact = true;
-        } else {
-            // 需要付费查看其他占卜师
-            try {
-                // 使用占卜师ID作为用户ID进行付费
-                $result = $tataCoinManager->viewReaderContact($_SESSION['reader_id'], $readerId, 'reader');
-                if ($result['success']) {
-                    $hasViewedContact = true;
-                    $showContact = true;
-                    if (!$result['already_paid']) {
-                        $paymentSuccess = "成功支付 {$result['cost']} 个Tata Coin";
-                    }
-                }
-            } catch (Exception $e) {
-                $paymentError = $e->getMessage();
-            }
-        }
-    } elseif ($hasViewedContact) {
+
+// 管理员直接显示联系方式，占卜师查看自己页面也直接显示
+if ($isAdmin || ($isReader && $_SESSION['reader_id'] == $readerId)) {
+    $showContact = true;
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $canViewContact) {
+    if ($hasViewedContact) {
         // 已经付费查看过，直接显示
         $showContact = true;
     } elseif (isset($_SESSION['user_id'])) {
-        // 需要付费查看
+        // 普通用户需要付费查看
         try {
             $result = $tataCoinManager->viewReaderContact($_SESSION['user_id'], $readerId);
             if ($result['success']) {
@@ -125,13 +101,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['view_contact']) && $c
         } catch (Exception $e) {
             $paymentError = $e->getMessage();
         }
+    } elseif (isset($_SESSION['reader_id']) && $_SESSION['reader_id'] != $readerId) {
+        // 占卜师查看其他占卜师需要付费
+        try {
+            $result = $tataCoinManager->viewReaderContact($_SESSION['reader_id'], $readerId, 'reader');
+            if ($result['success']) {
+                $hasViewedContact = true;
+                $showContact = true;
+                if (!$result['already_paid']) {
+                    $paymentSuccess = "成功支付 {$result['cost']} 个Tata Coin";
+                    $userTataCoinBalance = $tataCoinManager->getBalance($_SESSION['reader_id'], 'reader');
+                }
+            }
+        } catch (Exception $e) {
+            $paymentError = $e->getMessage();
+        }
     }
 }
 
-// 记录免费浏览（如果用户已登录但没有查看联系方式）
-if (isset($_SESSION['user_id']) && !$showContact && !$hasViewedContact) {
+// 记录免费浏览（如果普通用户已登录但没有查看联系方式）
+// 管理员不记录免费浏览，占卜师查看自己页面也不记录
+if (isset($_SESSION['user_id']) && !$isAdmin && !$showContact && !$hasViewedContact) {
     try {
         $tataCoinManager->recordFreeBrowse($_SESSION['user_id'], $readerId);
+    } catch (Exception $e) {
+        // 忽略记录失败
+    }
+} elseif (isset($_SESSION['reader_id']) && $_SESSION['reader_id'] != $readerId && !$showContact && !$hasViewedContact) {
+    // 占卜师查看其他占卜师页面也记录免费浏览
+    try {
+        $tataCoinManager->recordFreeBrowse($_SESSION['reader_id'], $readerId, 'reader');
     } catch (Exception $e) {
         // 忽略记录失败
     }
@@ -267,9 +266,10 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
         $canReview = !$hasReviewed;
         $hasPurchased = true; // 管理员视为已购买
     } elseif ($isReader) {
-        // 占卜师权限：可以查看评论，但不能评价其他占卜师
-        $canReview = false; // 占卜师不能评价其他占卜师
-        $hasPurchased = false; // 占卜师不视为已购买
+        // 占卜师权限：可以评价，但需要检查是否已评价过
+        $hasReviewed = $reviewManager->hasUserReviewed($currentUserId, $readerId);
+        $canReview = !$hasReviewed;
+        $hasPurchased = true; // 占卜师视为已购买
     } else {
         // 普通用户权限
         $hasPurchased = $reviewManager->hasUserPurchased($currentUserId, $readerId);
@@ -325,22 +325,23 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
         }
 
         .reader-photo img {
-            max-width: 100% !important;
-            max-height: 100% !important;
-            width: auto !important;
-            height: auto !important;
-            object-fit: contain !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            object-position: center !important;
             transition: transform 0.3s ease !important;
         }
 
         .reader-photo-large {
-            max-width: 100% !important;
-            max-height: 400px !important;
-            width: auto !important;
-            height: auto !important;
-            object-fit: contain !important;
+            width: 100% !important;
+            max-width: 400px !important;
+            height: 400px !important;
+            object-fit: cover !important;
+            object-position: center !important;
             border-radius: 15px !important;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+            display: block !important;
+            margin: 0 auto !important;
         }
 
         .default-photo {
@@ -503,54 +504,6 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
 
         .admin-link:hover {
             background: rgba(26, 26, 26, 0.2);
-            transform: translateY(-1px);
-        }
-
-        /* 占卜师模式横幅 */
-        .reader-mode-banner {
-            background: linear-gradient(135deg, #8b5cf6, #a855f7);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
-        }
-
-        .reader-banner-content {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .reader-icon {
-            font-size: 24px;
-        }
-
-        .reader-text {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .reader-note {
-            flex: 1;
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .reader-link {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .reader-link:hover {
-            background: rgba(255, 255, 255, 0.3);
             transform: translateY(-1px);
         }
 
@@ -1480,7 +1433,9 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                 <div class="reader-profile">
                     <div class="reader-photo-section">
                         <?php
-                        $photoSrc = getReaderPhotoUrl($reader);
+                        // 使用新的头像助手类
+                        require_once 'includes/AvatarHelper.php';
+                        $photoSrc = AvatarHelper::getReaderAvatar($reader);
                         ?>
                         <img src="<?php echo h($photoSrc); ?>" alt="<?php echo h($reader['full_name']); ?>" class="reader-photo-large">
                         
@@ -1593,6 +1548,13 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                 <i class="icon-admin"></i> 管理员模式：可直接查看所有联系方式
                             </p>
                         </div>
+                    <?php elseif ($isReader && $_SESSION['reader_id'] == $readerId): ?>
+                        <!-- 占卜师查看自己的页面 -->
+                        <div class="reader-contact-notice">
+                            <p style="color: #d4af37; font-weight: 500; margin-bottom: 15px;">
+                                <i class="icon-reader"></i> 这是您的个人页面，可直接查看联系方式
+                            </p>
+                        </div>
                     <?php elseif (!$showContact): ?>
                         <!-- 显示付费提示和用户余额 -->
                         <div class="contact-payment-section">
@@ -1604,20 +1566,17 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                 </div>
                             <?php endif; ?>
 
-                            <?php if (!$isReader): ?>
-                                <!-- 只对普通用户显示余额信息 -->
-                                <div class="user-balance-info">
-                                    <div class="balance-display">
-                                        <span class="balance-label">💰 我的Tata Coin：</span>
-                                        <span class="balance-amount"><?php echo number_format($userTataCoinBalance); ?> 枚</span>
-                                    </div>
-                                    <?php if ($userTataCoinBalance < $contactCost): ?>
-                                        <div class="insufficient-balance">
-                                            <p style="color: #ef4444;">余额不足，需要 <?php echo $contactCost; ?> 个Tata Coin</p>
-                                        </div>
-                                    <?php endif; ?>
+                            <div class="user-balance-info">
+                                <div class="balance-display">
+                                    <span class="balance-label">💰 我的Tata Coin：</span>
+                                    <span class="balance-amount"><?php echo number_format($userTataCoinBalance); ?> 枚</span>
                                 </div>
-                            <?php endif; ?>
+                                <?php if ($userTataCoinBalance < $contactCost): ?>
+                                    <div class="insufficient-balance">
+                                        <p style="color: #ef4444;">余额不足，需要 <?php echo $contactCost; ?> 个Tata Coin</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
 
                             <div class="contact-preview">
                                 <div class="payment-info">
@@ -1644,13 +1603,8 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                     </form>
                                 <?php else: ?>
                                     <div class="insufficient-funds">
-                                        <?php if ($isReader): ?>
-                                            <p>需要 <?php echo $contactCost; ?> 个Tata Coin 查看联系方式</p>
-                                            <a href="<?php echo SITE_URL; ?>/reader/dashboard.php" class="btn btn-secondary">前往占卜师后台</a>
-                                        <?php else: ?>
-                                            <p>Tata Coin余额不足</p>
-                                            <a href="<?php echo SITE_URL; ?>/user/index.php" class="btn btn-secondary">前往用户中心</a>
-                                        <?php endif; ?>
+                                        <p>Tata Coin余额不足</p>
+                                        <a href="<?php echo SITE_URL; ?>/user/index.php" class="btn btn-secondary">前往用户中心</a>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -1665,7 +1619,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                         </div>
                     <?php endif; ?>
 
-                    <?php if ($showContact || $isAdmin): ?>
+                    <?php if ($showContact || $isAdmin || ($isReader && $_SESSION['reader_id'] == $readerId)): ?>
                         <div class="contact-info">
                             <?php if (!empty($reader['contact_info'])): ?>
                                 <div class="contact-details">
@@ -1744,7 +1698,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
 
 
                     <!-- 评价表单 -->
-                    <?php if (($isAdmin || isset($_SESSION['user_id'])) && !$isReader): ?>
+                    <?php if ($isAdmin || $isReader || isset($_SESSION['user_id'])): ?>
                         <?php if ($canReview): ?>
                             <div class="review-form-section">
                                 <h3>📝 写评价</h3>
@@ -1794,8 +1748,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                 <p>💡 购买服务后可以评价该塔罗师</p>
                             </div>
                         <?php endif; ?>
-                    <?php elseif (!$isReader): ?>
-                        <!-- 只对未登录的普通用户显示登录提示 -->
+                    <?php else: ?>
                         <div class="review-notice">
                             <p>💡 <a href="auth/login.php">登录</a> 后可以查看和发表评价</p>
                         </div>
@@ -1814,10 +1767,14 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                     <div class="review-header">
                                         <div class="reviewer-info">
                                             <?php
+                                            $userAvatarSrc = '';
                                             if ($review['is_anonymous']) {
                                                 $userAvatarSrc = 'img/anonymous.jpg';
+                                            } elseif (!empty($review['user_avatar'])) {
+                                                $userAvatarSrc = $review['user_avatar'];
                                             } else {
-                                                $userAvatarSrc = getUserAvatarUrl($review);
+                                                // 根据用户性别使用默认头像
+                                                $userAvatarSrc = ($review['user_gender'] === 'female') ? 'img/nf.jpg' : 'img/nm.jpg';
                                             }
                                             ?>
                                             <img src="<?php echo h($userAvatarSrc); ?>"
@@ -1852,7 +1809,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                     <?php endif; ?>
 
                                     <div class="review-actions">
-                                        <?php if (($isAdmin || isset($_SESSION['user_id'])) && !$isReader): ?>
+                                        <?php if ($isAdmin || isset($_SESSION['user_id'])): ?>
                                             <button class="like-btn <?php echo isset($userLikes[$review['id']]) ? 'liked' : ''; ?>"
                                                     data-review-id="<?php echo $review['id']; ?>">
                                                 👍 <span class="like-count"><?php echo $review['like_count']; ?></span>
@@ -1871,7 +1828,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                         <h3>❓ 问大家</h3>
 
                         <!-- 提问表单 -->
-                        <?php if (($isAdmin || isset($_SESSION['user_id'])) && !$isReader): ?>
+                        <?php if ($isAdmin || $isReader || isset($_SESSION['user_id'])): ?>
                             <div class="question-form-section">
                                 <?php if ($questionError): ?>
                                     <div class="alert alert-error"><?php echo h($questionError); ?></div>
@@ -1893,8 +1850,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                     </div>
                                 </form>
                             </div>
-                        <?php elseif (!$isReader): ?>
-                            <!-- 只对未登录的普通用户显示登录提示 -->
+                        <?php else: ?>
                             <div class="review-notice">
                                 <p>💡 <a href="auth/login.php">登录</a> 后可以提问</p>
                             </div>
@@ -1952,8 +1908,7 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                                     </div>
                                                 </form>
                                             </div>
-                                        <?php elseif (!$isReader): ?>
-                                            <!-- 只对未登录的普通用户显示登录提示 -->
+                                        <?php else: ?>
                                             <div class="review-notice" style="margin-top: 10px; padding: 8px 12px; font-size: 0.85rem;">
                                                 <p><a href="auth/login.php">登录</a> 后可以回答</p>
                                             </div>
@@ -1991,7 +1946,16 @@ if (isset($_SESSION['user_id']) || $isAdmin || $isReader) {
                                     <div class="reader-photo">
                                         <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $relatedReader['id']; ?>" class="reader-photo-link">
                                             <?php
-                                            $relatedPhotoSrc = getReaderPhotoUrl($relatedReader);
+                                            $relatedPhotoSrc = '';
+                                            if (!empty($relatedReader['photo'])) {
+                                                $relatedPhotoSrc = $relatedReader['photo'];
+                                                // 清理路径格式
+                                                $relatedPhotoSrc = str_replace('../', '', $relatedPhotoSrc);
+                                                $relatedPhotoSrc = ltrim($relatedPhotoSrc, '/');
+                                            } else {
+                                                // 使用新的默认头像系统
+                                                $relatedPhotoSrc = AvatarHelper::getDefaultAvatar($relatedReader['gender'], $relatedReader['id']);
+                                            }
                                             ?>
                                             <img src="<?php echo h($relatedPhotoSrc); ?>" alt="<?php echo h($relatedReader['full_name']); ?>">
                                         </a>

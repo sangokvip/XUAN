@@ -1,274 +1,246 @@
 /**
- * 图片懒加载和优化显示
+ * 图片懒加载和WebP支持
  */
-class ImageOptimizer {
+class LazyImageLoader {
     constructor() {
         this.observer = null;
+        this.supportsWebP = false;
         this.init();
     }
 
-    init() {
-        // 检查浏览器支持
-        if ('IntersectionObserver' in window) {
-            this.setupIntersectionObserver();
-        } else {
-            // 降级处理：直接加载所有图片
-            this.loadAllImages();
-        }
-
+    async init() {
         // 检测WebP支持
-        this.detectWebPSupport();
+        this.supportsWebP = await this.checkWebPSupport();
+        
+        // 初始化Intersection Observer
+        this.initObserver();
+        
+        // 处理现有图片
+        this.processImages();
     }
 
     /**
-     * 设置交叉观察器（懒加载）
+     * 检测浏览器是否支持WebP
      */
-    setupIntersectionObserver() {
-        const options = {
-            root: null,
-            rootMargin: '50px',
-            threshold: 0.1
-        };
-
-        this.observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    this.loadImage(entry.target);
-                    this.observer.unobserve(entry.target);
-                }
-            });
-        }, options);
-
-        // 观察所有懒加载图片
-        this.observeImages();
-    }
-
-    /**
-     * 观察需要懒加载的图片
-     */
-    observeImages() {
-        const lazyImages = document.querySelectorAll('img[data-src], picture[data-src]');
-        lazyImages.forEach(img => {
-            this.observer.observe(img);
+    checkWebPSupport() {
+        return new Promise((resolve) => {
+            const webP = new Image();
+            webP.onload = webP.onerror = () => {
+                resolve(webP.height === 2);
+            };
+            webP.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
         });
     }
 
     /**
-     * 加载单个图片
+     * 初始化Intersection Observer
      */
-    loadImage(element) {
-        if (element.tagName === 'IMG') {
-            this.loadSingleImage(element);
-        } else if (element.tagName === 'PICTURE') {
-            this.loadPictureElement(element);
-        }
-    }
-
-    /**
-     * 加载单个img元素
-     */
-    loadSingleImage(img) {
-        const src = img.dataset.src;
-        if (src) {
-            img.src = src;
-            img.classList.add('loaded');
-            
-            // 移除data-src属性
-            delete img.dataset.src;
-            
-            // 添加加载完成的淡入效果
-            img.addEventListener('load', () => {
-                img.classList.add('fade-in');
+    initObserver() {
+        if ('IntersectionObserver' in window) {
+            this.observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        this.loadImage(entry.target);
+                        this.observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                rootMargin: '50px 0px',
+                threshold: 0.01
             });
         }
     }
 
     /**
-     * 加载picture元素
+     * 处理页面中的图片
      */
-    loadPictureElement(picture) {
-        const sources = picture.querySelectorAll('source[data-srcset]');
-        const img = picture.querySelector('img[data-src]');
-
-        // 加载source元素
-        sources.forEach(source => {
-            const srcset = source.dataset.srcset;
-            if (srcset) {
-                source.srcset = srcset;
-                delete source.dataset.srcset;
-            }
-        });
-
-        // 加载img元素
-        if (img) {
-            this.loadSingleImage(img);
-        }
-
-        picture.classList.add('loaded');
-    }
-
-    /**
-     * 直接加载所有图片（降级处理）
-     */
-    loadAllImages() {
-        const lazyImages = document.querySelectorAll('img[data-src], picture[data-src]');
-        lazyImages.forEach(element => {
-            this.loadImage(element);
-        });
-    }
-
-    /**
-     * 检测WebP支持
-     */
-    detectWebPSupport() {
-        const webP = new Image();
-        webP.onload = webP.onerror = () => {
-            const isSupported = (webP.height === 2);
-            document.documentElement.classList.toggle('webp-support', isSupported);
-            document.documentElement.classList.toggle('no-webp-support', !isSupported);
-        };
-        webP.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
-    }
-
-    /**
-     * 预加载关键图片
-     */
-    preloadCriticalImages() {
-        const criticalImages = document.querySelectorAll('.critical-image');
-        criticalImages.forEach(img => {
-            if (img.dataset.src) {
+    processImages() {
+        const images = document.querySelectorAll('img[data-src], img[data-srcset]');
+        
+        images.forEach(img => {
+            if (this.observer) {
+                this.observer.observe(img);
+            } else {
+                // 降级处理：直接加载
                 this.loadImage(img);
             }
         });
     }
 
     /**
-     * 添加图片到懒加载队列
+     * 加载单个图片
      */
-    addToLazyLoad(element) {
-        if (this.observer) {
-            this.observer.observe(element);
-        } else {
-            this.loadImage(element);
+    loadImage(img) {
+        // 创建新的图片元素用于预加载
+        const imageLoader = new Image();
+        
+        imageLoader.onload = () => {
+            // 图片加载成功后替换src
+            if (img.dataset.srcset) {
+                img.srcset = img.dataset.srcset;
+            }
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+            }
+            
+            // 添加加载完成的类
+            img.classList.add('loaded');
+            img.classList.remove('loading');
+            
+            // 移除data属性
+            delete img.dataset.src;
+            delete img.dataset.srcset;
+        };
+
+        imageLoader.onerror = () => {
+            // 加载失败时的处理
+            img.classList.add('error');
+            img.classList.remove('loading');
+            
+            // 如果有fallback图片，使用fallback
+            if (img.dataset.fallback) {
+                img.src = img.dataset.fallback;
+            }
+        };
+
+        // 开始加载
+        img.classList.add('loading');
+        
+        // 优先使用WebP格式
+        if (this.supportsWebP && img.dataset.webp) {
+            imageLoader.src = img.dataset.webp;
+        } else if (img.dataset.srcset) {
+            imageLoader.srcset = img.dataset.srcset;
+        } else if (img.dataset.src) {
+            imageLoader.src = img.dataset.src;
         }
     }
-}
 
-/**
- * 图片加载错误处理
- */
-function handleImageError(img) {
-    // 如果是WebP图片加载失败，尝试加载原格式
-    if (img.src.includes('.webp')) {
-        const fallbackSrc = img.src.replace('.webp', '.jpg');
-        img.src = fallbackSrc;
-        return;
+    /**
+     * 动态添加新图片到懒加载队列
+     */
+    addImage(img) {
+        if (this.observer) {
+            this.observer.observe(img);
+        } else {
+            this.loadImage(img);
+        }
     }
 
-    // 如果是缩略图加载失败，尝试加载原图
-    if (img.src.includes('_small') || img.src.includes('_medium') || img.src.includes('_large')) {
-        const originalSrc = img.src.replace(/_small|_medium|_large/, '');
-        img.src = originalSrc;
-        return;
-    }
-
-    // 最后使用默认头像
-    const isReader = img.closest('.reader-card, .reader-photo, .reader-profile');
-    if (isReader) {
-        img.src = 'img/m1.jpg'; // 默认占卜师头像
-    } else {
-        img.src = 'img/nm.jpg'; // 默认用户头像
+    /**
+     * 强制加载所有图片
+     */
+    loadAllImages() {
+        const images = document.querySelectorAll('img[data-src], img[data-srcset]');
+        images.forEach(img => this.loadImage(img));
     }
 }
 
 /**
- * 创建响应式图片HTML
+ * 图片优化辅助函数
  */
-function createResponsiveImage(imagePath, alt, size = 'medium', className = '') {
-    const pathInfo = getImagePathInfo(imagePath);
-    if (!pathInfo) return '';
-
-    const webpSupported = document.documentElement.classList.contains('webp-support');
-    const thumbnailPath = `${pathInfo.dir}/${pathInfo.name}_${size}.${pathInfo.ext}`;
-    const webpThumbnailPath = `${pathInfo.dir}/${pathInfo.name}_${size}.webp`;
-
-    if (webpSupported) {
+window.ImageHelper = {
+    /**
+     * 生成响应式图片HTML
+     */
+    generateResponsiveImage(baseUrl, filename, alt = '', className = '', sizes = ['thumb', 'small', 'medium', 'large']) {
+        const baseName = filename.replace(/\.[^/.]+$/, '');
+        const supportsWebP = window.lazyLoader ? window.lazyLoader.supportsWebP : false;
+        
+        let srcset = [];
+        let webpSrcset = [];
+        
+        sizes.forEach(size => {
+            const width = this.getSizeWidth(size);
+            srcset.push(`${baseUrl}/optimized/${size}/${baseName}.jpg ${width}w`);
+            if (supportsWebP) {
+                webpSrcset.push(`${baseUrl}/webp/${size}/${baseName}.webp ${width}w`);
+            }
+        });
+        
+        const defaultSrc = `${baseUrl}/optimized/medium/${baseName}.jpg`;
+        const webpSrc = supportsWebP ? `${baseUrl}/webp/medium/${baseName}.webp` : null;
+        
         return `
-            <picture class="${className}">
-                <source data-srcset="${webpThumbnailPath}" type="image/webp">
-                <img data-src="${thumbnailPath}" alt="${alt}" class="lazy-image" onerror="handleImageError(this)">
-            </picture>
+            <img 
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
+                data-src="${defaultSrc}"
+                data-srcset="${srcset.join(', ')}"
+                ${webpSrc ? `data-webp="${webpSrc}"` : ''}
+                alt="${alt}"
+                class="lazy-image ${className}"
+                loading="lazy"
+            />
         `;
-    } else {
-        return `<img data-src="${thumbnailPath}" alt="${alt}" class="lazy-image ${className}" onerror="handleImageError(this)">`;
+    },
+
+    /**
+     * 获取尺寸对应的宽度
+     */
+    getSizeWidth(size) {
+        const widths = {
+            'thumb': 150,
+            'small': 300,
+            'medium': 600,
+            'large': 1200,
+            'circle': 200
+        };
+        return widths[size] || 600;
+    },
+
+    /**
+     * 生成圆形头像HTML
+     */
+    generateCircleAvatar(baseUrl, filename, alt = '', className = '') {
+        const baseName = filename.replace(/\.[^/.]+$/, '');
+        const supportsWebP = window.lazyLoader ? window.lazyLoader.supportsWebP : false;
+        
+        const defaultSrc = `${baseUrl}/optimized/circle/${baseName}.jpg`;
+        const webpSrc = supportsWebP ? `${baseUrl}/webp/circle/${baseName}.webp` : null;
+        
+        return `
+            <img 
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"
+                data-src="${defaultSrc}"
+                ${webpSrc ? `data-webp="${webpSrc}"` : ''}
+                alt="${alt}"
+                class="lazy-image circle-avatar ${className}"
+                loading="lazy"
+            />
+        `;
     }
-}
+};
 
-/**
- * 解析图片路径信息
- */
-function getImagePathInfo(imagePath) {
-    if (!imagePath) return null;
-    
-    const lastSlash = imagePath.lastIndexOf('/');
-    const lastDot = imagePath.lastIndexOf('.');
-    
-    if (lastDot === -1) return null;
-    
-    return {
-        dir: lastSlash === -1 ? '' : imagePath.substring(0, lastSlash),
-        name: imagePath.substring(lastSlash + 1, lastDot),
-        ext: imagePath.substring(lastDot + 1)
-    };
-}
-
-// 初始化图片优化器
+// 初始化懒加载
 document.addEventListener('DOMContentLoaded', () => {
-    const imageOptimizer = new ImageOptimizer();
-    
-    // 预加载关键图片
-    imageOptimizer.preloadCriticalImages();
-    
-    // 全局暴露，供其他脚本使用
-    window.imageOptimizer = imageOptimizer;
+    window.lazyLoader = new LazyImageLoader();
 });
 
-// CSS样式（内联）
-const style = document.createElement('style');
-style.textContent = `
-    .lazy-image {
-        opacity: 0;
-        transition: opacity 0.3s ease;
+// 为动态内容提供重新扫描功能
+window.addEventListener('load', () => {
+    // 监听DOM变化，自动处理新添加的图片
+    if ('MutationObserver' in window) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1) { // Element node
+                        const images = node.querySelectorAll ? 
+                            node.querySelectorAll('img[data-src], img[data-srcset]') : 
+                            [];
+                        
+                        images.forEach(img => {
+                            if (window.lazyLoader) {
+                                window.lazyLoader.addImage(img);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
     }
-    
-    .lazy-image.loaded {
-        opacity: 1;
-    }
-    
-    .lazy-image.fade-in {
-        opacity: 1;
-    }
-    
-    /* 加载占位符 */
-    .lazy-image:not(.loaded) {
-        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-        background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-    }
-    
-    @keyframes loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
-    }
-    
-    /* 响应式图片容器 */
-    picture {
-        display: block;
-    }
-    
-    picture img {
-        width: 100%;
-        height: auto;
-    }
-`;
-document.head.appendChild(style);
+});

@@ -1,5 +1,135 @@
 /* 塔罗师后台样式 */
 
+/* 完善资料提示样式 */
+.profile-completion-alert {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border: 1px solid #ffeaa7;
+    border-left: 4px solid #f39c12;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 15px rgba(243, 156, 18, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-completion-alert::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #f39c12, #e67e22, #d35400);
+}
+
+.profile-completion-alert h3 {
+    color: #d35400;
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.profile-completion-alert h3::before {
+    content: '📝';
+    font-size: 24px;
+}
+
+.profile-completion-alert p {
+    color: #8b4513;
+    font-size: 16px;
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+}
+
+.profile-completion-score {
+    display: inline-block;
+    background: #f39c12;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.profile-completion-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+.profile-completion-list li {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(243, 156, 18, 0.2);
+    border-radius: 8px;
+    padding: 0;
+    transition: all 0.3s ease;
+}
+
+.profile-completion-list li:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: #f39c12;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.25);
+}
+
+.profile-completion-list a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    color: #d35400;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+    border-radius: 6px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.6));
+}
+
+.profile-completion-list a::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: #f39c12;
+    border-radius: 50%;
+    margin-right: 12px;
+    transition: all 0.3s ease;
+}
+
+.profile-completion-list a::after {
+    content: '→';
+    font-size: 16px;
+    font-weight: bold;
+    color: #f39c12;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+}
+
+.profile-completion-list a:hover {
+    color: #e67e22;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+    transform: translateX(3px);
+}
+
+.profile-completion-list a:hover::before {
+    background: #e67e22;
+    transform: scale(1.3);
+}
+
+.profile-completion-list a:hover::after {
+    color: #e67e22;
+    transform: translateX(5px);
+    opacity: 1;
+}
+
 /* 塔罗师后台布局 */
 .reader-container {
     display: grid;
@@ -295,6 +425,62 @@
     align-items: center;
 }
 
+.reader-header .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.reader-header .logo a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: opacity 0.3s ease;
+}
+
+.reader-header .logo a:hover {
+    opacity: 0.9;
+}
+
+.reader-header .logo-image {
+    height: 40px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
+}
+
+.reader-header .backend-label {
+    background: linear-gradient(135deg, #d4af37, #f1c40f);
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.reader-header .backend-label::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.6s ease;
+}
+
+.reader-header .logo a:hover .backend-label::before {
+    left: 100%;
+}
+
 .reader-header .logo h1 {
     color: #d4af37;
     font-size: 24px;
@@ -476,6 +662,52 @@ body .mobile-nav-item {
         flex-direction: column;
         gap: 15px;
         text-align: center;
+    }
+
+    .reader-header .logo {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .reader-header .logo a {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .reader-header .logo-image {
+        height: 32px;
+        max-width: 150px;
+    }
+
+    .reader-header .backend-label {
+        font-size: 12px;
+        padding: 4px 10px;
+        letter-spacing: 0.3px;
+    }
+
+    /* 移动端完善资料提示样式 */
+    .profile-completion-alert {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .profile-completion-alert h3 {
+        font-size: 18px;
+    }
+
+    .profile-completion-list {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .profile-completion-list a {
+        padding: 14px 16px;
+        font-size: 14px;
+    }
+
+    .profile-completion-list a::after {
+        font-size: 14px;
     }
 }
 

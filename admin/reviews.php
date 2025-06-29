@@ -93,7 +93,15 @@ $pageTitle = '评价管理';
     <link rel="stylesheet" href="../assets/css/style.css">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <style>
-        /* 评价管理页面特定样式 */
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
         
         .stats-grid {
             display: grid;
@@ -267,10 +275,7 @@ $pageTitle = '评价管理';
         </div>
 
         <div class="admin-content">
-            <div class="page-header">
-                <h1>⭐ 评价管理</h1>
-                <p>管理用户评价和问答系统</p>
-            </div>
+            <h1>⭐ 评价管理</h1>
         
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
@@ -391,7 +396,6 @@ $pageTitle = '评价管理';
                     <?php endforeach; ?>
                 <?php endif; ?>
             </div>
-        </div>
         </div>
     </div>
 

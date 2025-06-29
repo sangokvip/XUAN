@@ -12,23 +12,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
         <li>
-            <a href="<?php echo SITE_URL; ?>/reader/profile.php"
-               class="<?php echo $current_page === 'profile.php' ? 'active' : ''; ?>">
+            <a href="<?php echo SITE_URL; ?>/reader/settings.php"
+               class="<?php echo in_array($current_page, ['profile.php', 'settings.php']) ? 'active' : ''; ?>">
                 <span class="icon">👤</span>
-                个人资料与设置
+                个人设置
             </a>
         </li>
+
         <li>
             <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $_SESSION['reader_id']; ?>"
-               target="_blank">
-                <span class="icon">🔍</span>
+               target="_blank" class="view-page-link">
+                <span class="icon">👁️</span>
                 查看我的页面
             </a>
         </li>
         <li>
             <a href="<?php echo SITE_URL; ?>/reader/view_records.php"
                class="<?php echo $current_page === 'view_records.php' ? 'active' : ''; ?>">
-                <span class="icon">👁️</span>
+                <span class="icon">📊</span>
                 查看记录
             </a>
         </li>

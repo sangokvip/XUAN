@@ -20,6 +20,7 @@ $featured_readers = getFeaturedReaders();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo getSiteName(); ?> - <?php echo getSiteDescription(); ?></title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/image-optimization.css">
     <link rel="stylesheet" href="assets/css/home.css">
     <link rel="stylesheet" href="assets/css/divination-tags.css">
 
@@ -62,9 +63,24 @@ $featured_readers = getFeaturedReaders();
                             <a href="<?php echo SITE_URL; ?>/reader.php?id=<?php echo $reader['id']; ?>" class="reader-circle-link">
                                 <div class="reader-circle-photo">
                                     <?php
-                                    $photoSrc = getReaderPhotoUrl($reader, true);
+                                    $photoSrc = '';
+                                    if (!empty($reader['photo_circle'])) {
+                                        $photoSrc = $reader['photo_circle'];
+                                        // 清理路径格式
+                                        $photoSrc = str_replace('../', '', $photoSrc);
+                                        $photoSrc = ltrim($photoSrc, '/');
+                                    } elseif (!empty($reader['photo'])) {
+                                        $photoSrc = $reader['photo'];
+                                        // 清理路径格式
+                                        $photoSrc = str_replace('../', '', $photoSrc);
+                                        $photoSrc = ltrim($photoSrc, '/');
+                                    } else {
+                                        // 使用新的默认头像系统
+                                        require_once 'includes/AvatarHelper.php';
+                                        $photoSrc = AvatarHelper::getDefaultAvatar($reader['gender'], $reader['id']);
+                                    }
                                     ?>
-                                    <img src="<?php echo htmlspecialchars($photoSrc); ?>"
+                                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="<?php echo htmlspecialchars($photoSrc); ?>" class="lazy-image"
                                          alt="<?php echo htmlspecialchars($reader['full_name']); ?>">
                                 </div>
 
@@ -137,5 +153,7 @@ $featured_readers = getFeaturedReaders();
     </main>
 
     <?php include 'includes/footer.php'; ?>
+    <!-- 图片懒加载 -->
+    <script src="assets/js/lazy-loading.js"></script>
 </body>
 </html>
